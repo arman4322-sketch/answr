@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         padding: "48px 24px",
       }}
     >
-      {children}
+      <main id="main" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>{children}</main>
       <Toaster />
     </div>
   );

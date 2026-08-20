@@ -55,7 +55,7 @@ export default function SnapshotForm() {
             onChange={(e) => { setDomain(e.target.value); setInvalid(false); }}
             aria-label="Your company domain"
             aria-invalid={invalid}
-            style={{flex:"1",minWidth:"0",background:"transparent",border:"none",outline:"none",padding:"0",color:"var(--tx)",fontSize:"13.5px",fontFamily:"inherit"}}
+            style={{flex:"1",minWidth:"0",background:"transparent",border:"none",padding:"0",color:"var(--tx)",fontSize:"13.5px",fontFamily:"inherit"}}
           />
         </label>
         <button type="submit" className="btn-ac" style={{display:"inline-flex",alignItems:"center",gap:"8px",fontSize:"13.5px",fontWeight:"600",borderRadius:"8px",padding:"12px 22px",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{"Get my free snapshot"}

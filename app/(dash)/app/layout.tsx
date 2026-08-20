@@ -19,9 +19,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
     <FilterProvider>
       <div style={{ display: "flex", background: "var(--bg0)", minHeight: "100vh" }}>
         <Sidebar />
-        <div className="dash-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <main id="main" className="dash-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {children}
-        </div>
+        </main>
         <SmallScreenGate />
         <Overlays />
         <Toaster />

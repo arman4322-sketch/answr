@@ -33,7 +33,7 @@ export default function BrandField() {
           type="text"
           value={website}
           onChange={(e) => { setWebsite(e.target.value); setInvalid(false); }}
-          style={{flex:"1",minWidth:"0",border:"none",background:"transparent",padding:"0",fontSize:"14px",color:"var(--tx)",fontFamily:"inherit",outline:"none"}}
+          style={{flex:"1",minWidth:"0",border:"none",background:"transparent",padding:"0",fontSize:"14px",color:"var(--tx)",fontFamily:"inherit"}}
         />
       </div>
       {invalid && (

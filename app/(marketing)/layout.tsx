@@ -10,7 +10,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           rules must not be able to reach outside the marketing shell. */}
       <div className="mkt" style={{ maxWidth: "1440px", margin: "0 auto" }}>
         <Nav />
-        {children}
+        <main id="main">{children}</main>
         <Footer />
         <Toaster />
       </div>

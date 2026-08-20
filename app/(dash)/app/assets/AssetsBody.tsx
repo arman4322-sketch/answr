@@ -70,7 +70,7 @@ export default function AssetsBody() {
             placeholder="Search assets…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{fontSize:"12px",color:"var(--tx)",background:"rgba(255,255,255,0.045)",border:"none",borderRadius:"7px",padding:"6px 12px",fontFamily:"inherit",width:"150px",outline:"none"}}
+            style={{fontSize:"12px",color:"var(--tx)",background:"rgba(255,255,255,0.045)",border:"none",borderRadius:"7px",padding:"6px 12px",fontFamily:"inherit",width:"150px"}}
           />
           <AddBrandButton />
         </div>

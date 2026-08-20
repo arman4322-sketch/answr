@@ -63,6 +63,10 @@ export default function AgentsPage() {
       <AgentsTabs />
       <div className="frame-agents">
         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(232,179,75,0.08)", border: "1px solid color-mix(in oklab, #e8b34b 32%, transparent)", borderRadius: "10px", padding: "11px 14px", fontSize: "12.5px", color: "var(--mut)" }}>
+            <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "#e8b34b", border: "1px solid color-mix(in oklab,#e8b34b 40%,transparent)", borderRadius: "999px", padding: "3px 9px", whiteSpace: "nowrap" }}>{"Demo data"}</span>
+            <span>{"These figures are the Nike sample fixture. For AI-crawler traffic actually captured on this deployment, see "}<Link href="/app/live" style={{ color: "var(--ac)" }}>{"Live telemetry"}</Link>{"."}</span>
+          </div>
           <AgentKpis />
           <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

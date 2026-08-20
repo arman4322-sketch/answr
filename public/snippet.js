@@ -1,6 +1,7 @@
 /* Answr referral snippet — drop one line on any site:
-     <script defer src="https://answr-ruby.vercel.app/snippet.js"
-             data-endpoint="https://answr-ruby.vercel.app/api/collect"></script>
+     <script defer src="https://useanswr.com/snippet.js"
+             data-endpoint="https://useanswr.com/api/collect"></script>
+   (Replace useanswr.com with your own deployment's domain.)
 
    Reports first-touch referrer + utm_source so Answr can attribute visits that
    came from an AI assistant. No cookies, no fingerprinting, no personal data —

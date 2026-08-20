@@ -44,6 +44,30 @@ a:hover {
   background: rgba(142, 124, 242, 0.25);
 }
 
+/* Skip link — visually hidden until keyboard-focused, then pinned top-left.
+   Targets the <main id="main"> landmark in each route-group layout. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--ac);
+  color: #0e0f11;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-link { transition: none; }
+}
+
 /* Audit fix A3: focus visibility — 2px accent ring, all interactive elements */
 a:focus-visible,
 button:focus-visible,

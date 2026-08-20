@@ -81,7 +81,7 @@ export default function DemoForm() {
         <label htmlFor="demo-website" style={{display:"block",fontSize:"10.5px",fontWeight:"500",color:"var(--fnt)",marginTop:"14px"}}>{"Company website"}</label>
         <div style={{display:"flex",alignItems:"center",border:"1px solid var(--ac)",borderRadius:"8px",background:"var(--bg0)",padding:"10px 12px",fontSize:"13px",marginTop:"6px"}}>
           <span style={{color:"var(--fnt)"}}>{"https://"}</span>
-          <input id="demo-website" name="website" type="text" value={website} onChange={(e) => setWebsite(e.target.value)} style={{flex:"1",minWidth:"0",border:"none",outline:"none",background:"transparent",color:"var(--tx)",fontSize:"13px",padding:"0",fontFamily:"inherit"}} />
+          <input id="demo-website" name="website" type="text" value={website} onChange={(e) => setWebsite(e.target.value)} style={{flex:"1",minWidth:"0",border:"none",background:"transparent",color:"var(--tx)",fontSize:"13px",padding:"0",fontFamily:"inherit"}} />
         </div>
         <div style={{fontSize:"10.5px",fontWeight:"500",color:"var(--fnt)",marginTop:"14px"}}>{"What are you hoping to learn?"}</div>
         <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"8px"}}>
