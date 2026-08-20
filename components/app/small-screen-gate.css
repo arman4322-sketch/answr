@@ -1,0 +1,35 @@
+/* Small-screen gate — dashboard only.
+
+   The overlay ships in the SSR HTML but carries an inline `display:none` (see
+   SmallScreenGate.tsx), so at >=900px it never paints and never occupies
+   layout: desktop rendering is the same page it was before. The media query
+   below is the ONLY thing that reveals it, which is also why there is no
+   desktop flash — nothing waits on JS to decide, and nothing waits on this
+   file either. `!important` is required because the hidden state is inline;
+   that is deliberate, so a late-arriving stylesheet can never flash a
+   full-screen overlay across a 1440px desktop.
+
+   `[data-answr-gate="off"]` is stamped on <html> by a tiny inline script (see
+   SmallScreenGate.tsx) before this element is parsed, so a visitor who already
+   chose "Continue anyway" this session does not see the card blink on reload
+   either. Its rule wins over the reveal above on specificity alone (0,2,1 vs
+   0,1,0), both being important. */
+
+@media (max-width: 899px) {
+  .ssg {
+    display: flex !important;
+  }
+
+  :root[data-answr-gate="off"] .ssg {
+    display: none !important;
+  }
+
+  /* Below 900px the dashboard is far wider than the viewport by design.
+     Scrolling it inside its own column keeps wide tables usable and stops the
+     page itself from scrolling sideways. Scoped to the media query so the
+     desktop layout never becomes a scroll container. */
+  .dash-main {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}

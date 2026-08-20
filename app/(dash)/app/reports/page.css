@@ -1,0 +1,4 @@
+/* The staged reports.css only carried hover rules for the embedded sidebar (now the
+   shared layout's). Kept here: hover for the concierge-report trigger, matching the
+   global anchor hover it replaced. */
+.frame-reports .wiz-trigger:hover{color:var(--ac-hover)}

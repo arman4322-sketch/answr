@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* ————— Answr design tokens (from handoff README, with verified audit fixes) ————— */
+:root {
+  --ac: #8E7CF2;            /* accent */
+  --ac-hover: #a99bf7;
+  --bg0: #0e0f11;           /* frame ground */
+  --bg1: #151619;           /* card */
+  --bg2: #1c1d21;           /* raised */
+  --brd: rgba(255, 255, 255, 0.065);
+  --tx: #eeeff2;            /* primary text */
+  --mut: #9b9ca3;           /* secondary text */
+  --fnt: #82848d;           /* faint text — audit fix A1: was #686a72 (3.35:1), now 4.85:1 on card */
+  --page: #0a0a0c;          /* canvas page */
+  --good: #4cb782;
+  --bad: #e5636e;
+  --info: #7fa7d9;
+  --gold: #e8b34b;
+  --gold2: #d9b679;
+  --violet: #b98ed9;
+}
+
+html {
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--tx);
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--ac);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--ac-hover);
+}
+
+::selection {
+  background: rgba(142, 124, 242, 0.25);
+}
+
+/* Audit fix A3: focus visibility — 2px accent ring, all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Audit fix A2: primary buttons use a dark label on accent (5.77:1) instead of white (3.33:1).
+   .btn-ac is the canonical primary button treatment. */
+.btn-ac {
+  background: var(--ac);
+  color: #0e0f11;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-ac:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(142, 124, 242, 0.3);
+  color: #0e0f11;
+}
+
+/* Canonical row/table hover (README: rgba(255,255,255,0.02–0.03)) */
+.row-hover:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Inline section CTA pill (marketing) */
+.cta-pill {
+  background: rgba(142, 124, 242, 0.1);
+  transition: background 0.15s ease;
+}
+.cta-pill:hover {
+  background: rgba(142, 124, 242, 0.16);
+}
+
+/* Card-row hover (lists whose rows are bg1 cards — background hover is invisible there) */
+.card-hover {
+  transition: border-color 0.12s ease;
+}
+.card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Nav dropdown item hover */
+.dd-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Sidebar nav item (dashboard) */
+.nav-item {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--tx);
+}
+.nav-item[data-active="true"] {
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--tx);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

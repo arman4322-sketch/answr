@@ -1,0 +1,15 @@
+/* Nav rows — hover and keyboard focus per NAVIGATION.md states table. */
+.nav-row {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--tx);
+}
+.nav-row[aria-current="page"]:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+.nav-row:focus-visible {
+  outline: 1px solid var(--ac);
+  outline-offset: 2px;
+}

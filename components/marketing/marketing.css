@@ -1,0 +1,300 @@
+/* ————————————————— Marketing site: small-screen layout —————————————————
+
+   The marketing pages are pixel-faithful conversions of 1440px canvas frames,
+   so every box carries its own inline style. Rewriting ~30 minified pages to
+   add class hooks would be a huge, risky diff, so the responsive layer instead
+   drives off the inline styles themselves with attribute selectors.
+
+   Rules that must hold for this file to stay correct:
+
+   1. EVERY rule lives inside a max-width media query. Nothing here can execute
+      at >= 1440px, so desktop rendering is untouched by construction.
+   2. Everything is scoped to `.mkt`, which only the marketing shell (the
+      (marketing) layout and the global 404) sets. The dashboard reuses the same
+      `frame-*` wrapper class names and must not be affected.
+   3. Attribute selectors match inline styles in BOTH serializations. React
+      writes the compact form on the server (`grid-template-columns:1fr 1fr`)
+      but the browser re-serializes with spaces after a client-side navigation
+      (`grid-template-columns: 1fr 1fr;`). So: match property NAMES (identical in
+      both), or value fragments that survive the space (`repeat(3` matches both
+      `repeat(3,1fr)` and `repeat(3, 1fr)`). Never match across a `:` or `,`
+      boundary — pair the two spellings explicitly where that is unavoidable.
+   4. Inline styles outrank stylesheets, so overrides need `!important`.
+
+   Breakpoints: 900px (nav collapses, columns stack, type scales) and 600px
+   (phone tightening). ———————————————————————————————————————————————————— */
+
+/* ══════════════════ Nav: hamburger below 900px ══════════════════ */
+
+.mkt-burger { display: none; }
+
+@media (max-width: 900px) {
+  /* The seven section links and the secondary "Log in" fold into the sheet.
+     They are flex children, so display:none also removes their 26px gap. */
+  .mkt-nav .mkt-nav-item,
+  .mkt-nav .mkt-nav-login { display: none !important; }
+
+  .mkt-nav { padding-left: 20px !important; padding-right: 20px !important; gap: 12px !important; }
+
+  .mkt-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--brd);
+    border-radius: 9px;
+    cursor: pointer;
+    color: var(--tx);
+    flex: none;
+  }
+  .mkt-burger:hover { background: var(--bg2); }
+
+  /* The two controls that stay in the bar are 24px and 36px in the canvas. */
+  .mkt-nav .mkt-nav-logo,
+  .mkt-nav .btn-ac { min-height: 40px; }
+
+  .mkt-burger-box { position: relative; display: block; width: 18px; height: 12px; }
+  .mkt-burger-box span {
+    position: absolute;
+    left: 0;
+    width: 18px;
+    height: 1.5px;
+    border-radius: 2px;
+    background: var(--tx);
+    transition: transform 0.16s ease, opacity 0.16s ease;
+  }
+  .mkt-burger-box span:nth-child(1) { top: 0; }
+  .mkt-burger-box span:nth-child(2) { top: 5px; }
+  .mkt-burger-box span:nth-child(3) { top: 10px; }
+  .mkt-burger-box[data-open] span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+  .mkt-burger-box[data-open] span:nth-child(2) { opacity: 0; }
+  .mkt-burger-box[data-open] span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+
+  .mkt-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 25;
+  }
+
+  .mkt-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--bg1);
+    border: 1px solid var(--brd);
+    border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    max-height: calc(100vh - 74px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .mkt-menu:focus { outline: none; }
+
+  .mkt-menu-group + .mkt-menu-group { border-top: 1px solid var(--brd); margin-top: 6px; padding-top: 6px; }
+
+  .mkt-menu-section {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tx);
+  }
+  .mkt-menu-section[data-active] { background: rgba(255, 255, 255, 0.055); }
+  .mkt-menu-section:hover { background: rgba(255, 255, 255, 0.04); color: var(--tx); }
+
+  .mkt-menu-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 44px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    color: var(--tx);
+  }
+  .mkt-menu-item:hover { background: rgba(255, 255, 255, 0.04); color: var(--tx); }
+  .mkt-menu-item-t { font-size: 13px; font-weight: 500; }
+  .mkt-menu-item-s { font-size: 11px; color: var(--fnt); margin-top: 2px; }
+
+  .mkt-menu-foot { border-top: 1px solid var(--brd); margin-top: 6px; padding-top: 6px; }
+}
+
+/* The full nav row (logo + 7 sections + Log in + CTA) has an intrinsic width of
+   985px, so between the 900px collapse point and 985px it would still push the
+   page sideways. Tightening the bar's own gutter and gap buys ~128px there,
+   which keeps the complete nav visible down to the hamburger breakpoint instead
+   of collapsing it early on small laptops. */
+@media (min-width: 901px) and (max-width: 1000px) {
+  .mkt-nav { padding-left: 24px !important; padding-right: 24px !important; gap: 16px !important; }
+}
+
+/* ══════════════════ Page sections below 900px ══════════════════ */
+
+@media (max-width: 900px) {
+  /* Gutters. Every marketing page wraps its body in `.frame-<id>`, and its top
+     level children are the full-bleed sections carrying the canvas' 48/64px
+     side padding. Only sections that already declare padding are touched, so
+     nothing gains padding it never had; the longhands override just the
+     horizontal sides of the inline shorthand and leave the vertical rhythm. */
+  .mkt [class*="frame-"] > div[style*="padding"] {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* Multi-column layout grids collapse. Mockup tables (`34px 1.4fr …`,
+     `16px 1fr auto auto`, `120px repeat(4,1fr)` …) are deliberately NOT in this
+     list — their columns are what make them read as product UI, and they shrink
+     on their own because every track is fr/auto. */
+  .mkt [style*="grid-template-columns"]:is(
+      [style*="repeat(3"],
+      [style*="repeat(4"],
+      [style*="1fr 1fr"],
+      [style*="1fr 1.1fr"],
+      [style*="1.1fr 1fr"],
+      [style*="1.2fr 1fr"],
+      [style*="1.3fr 1fr"],
+      [style*="1.5fr 1fr"],
+      [style*="1fr 1.4fr"],
+      [style*="1fr 460px"],
+      [style*="1fr 28px"]
+    ):not([style*="120px repeat"]) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Grid items default to `min-width:auto`, so a single stacked track still
+     sizes to the widest child's min-content — which is how a 1240px product
+     mockup kept forcing a 394px column on a 375px screen. */
+  .mkt [style*="grid-template-columns"] > * { min-width: 0; }
+
+  /* Rows the canvas laid out side by side (copy + form, label + control, card
+     + CTA) wrap instead of overflowing. `flex-wrap` is inert while the content
+     still fits, so this only ever engages where the row would have broken. */
+  .mkt [class*="frame-"] div[style*="display:flex"],
+  .mkt [class*="frame-"] div[style*="display: flex"],
+  .mkt [class*="frame-"] form[style*="display:flex"],
+  .mkt [class*="frame-"] form[style*="display: flex"],
+  .mkt [class*="frame-"] label[style*="display:flex"],
+  .mkt [class*="frame-"] label[style*="display: flex"] { flex-wrap: wrap; }
+
+  /* Form controls are sized in the canvas for a 1240px column (260–340px). */
+  .mkt [class*="frame-"] input,
+  .mkt [class*="frame-"] textarea,
+  .mkt [class*="frame-"] select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    min-height: 40px;
+  }
+
+  /* The 28px cells in the in-house / agencies flow diagrams are arrow spacers
+     between steps; once stacked they would be three empty rows. */
+  .mkt [style*="grid-template-columns"][style*="1fr 28px"] > div[style*="text-align:center"]:empty,
+  .mkt [style*="grid-template-columns"][style*="1fr 28px"] > div[style*="text-align: center"]:empty {
+    display: none !important;
+  }
+
+  /* Oversized gaps designed for 1240px columns. */
+  .mkt [style*="grid-template-columns"][style*="gap:64px"],
+  .mkt [style*="grid-template-columns"][style*="gap: 64px"],
+  .mkt [style*="grid-template-columns"][style*="gap:56px"],
+  .mkt [style*="grid-template-columns"][style*="gap: 56px"] { gap: 32px !important; }
+
+  /* Anything that would be measured in whole pixels wider than the phone. */
+  .mkt [class*="frame-"] img,
+  .mkt [class*="frame-"] svg { max-width: 100%; }
+
+  /* Long unbroken tokens — API paths, robots.txt lines, URLs — in the mono
+     blocks on /integrations and /product/agent-analytics. */
+  .mkt [style*="ui-monospace"] { overflow-wrap: anywhere; }
+
+  /* Headline scale. Every ramp keeps the canvas value as its clamp maximum, so
+     the type is unchanged at the 900px boundary and only shrinks below it. The
+     homepage hero drops 64px -> 34px, which keeps it reading as a headline
+     rather than one word per line. */
+  .mkt [style*="font-size:96px"], .mkt [style*="font-size: 96px"] { font-size: clamp(56px, 15vw, 96px) !important; }
+  .mkt [style*="font-size:64px"], .mkt [style*="font-size: 64px"] { font-size: clamp(34px, 9vw, 64px) !important; }
+  .mkt [style*="font-size:48px"], .mkt [style*="font-size: 48px"] { font-size: clamp(30px, 8vw, 48px) !important; }
+  .mkt [style*="font-size:46px"], .mkt [style*="font-size: 46px"] { font-size: clamp(29px, 7.6vw, 46px) !important; }
+  .mkt [style*="font-size:44px"], .mkt [style*="font-size: 44px"] { font-size: clamp(28px, 7.4vw, 44px) !important; }
+  .mkt [style*="font-size:40px"], .mkt [style*="font-size: 40px"] { font-size: clamp(27px, 7vw, 40px) !important; }
+  .mkt [style*="font-size:36px"], .mkt [style*="font-size: 36px"] { font-size: clamp(25px, 6.4vw, 36px) !important; }
+  .mkt [style*="font-size:34px"], .mkt [style*="font-size: 34px"] { font-size: clamp(24px, 6.2vw, 34px) !important; }
+  .mkt [style*="font-size:32px"], .mkt [style*="font-size: 32px"] { font-size: clamp(23px, 6vw, 32px) !important; }
+  .mkt [style*="font-size:30px"], .mkt [style*="font-size: 30px"] { font-size: clamp(22px, 5.6vw, 30px) !important; }
+  .mkt [style*="font-size:28px"], .mkt [style*="font-size: 28px"] { font-size: clamp(21px, 5.2vw, 28px) !important; }
+  .mkt [style*="font-size:24px"], .mkt [style*="font-size: 24px"] { font-size: clamp(19px, 4.6vw, 24px) !important; }
+  .mkt [style*="font-size:22px"], .mkt [style*="font-size: 22px"] { font-size: clamp(18px, 4.4vw, 22px) !important; }
+  .mkt [style*="font-size:20px"], .mkt [style*="font-size: 20px"] { font-size: clamp(17px, 4.2vw, 20px) !important; }
+
+  /* Tap targets: give every padded link/button in the page body a 40px box.
+     `align-items` only takes effect on the flex ones (the CTA pills), so the
+     block-level full-width buttons keep their own centring. */
+  .mkt [class*="frame-"] a[style*="padding"],
+  .mkt [class*="frame-"] button[style*="padding"] { min-height: 40px; align-items: center; }
+
+  /* Footer: the brand block and the link columns each take a full row. Without
+     the 100% basis the `flex:1` column block stays on the brand's line and gets
+     squeezed under the 130px minmax floor of its own grid, which is what pushed
+     the document 2px wider than the viewport on every page. */
+  .mkt-footer { padding-left: 20px !important; padding-right: 20px !important; gap: 32px !important; }
+  .mkt-footer-brand,
+  .mkt-footer-cols { flex: 1 1 100% !important; min-width: 0 !important; }
+  .mkt-footer-cols { gap: 26px !important; }
+  .mkt-footer-legal { flex-wrap: wrap; gap: 8px; }
+
+  /* Footer link lists are 19px rows on a 9px rhythm — too tight for a thumb.
+     Trade the gap for a 40px row box so the pitch stays close to the canvas'. */
+  .mkt-footer-cols > div { gap: 0 !important; }
+  .mkt-footer-cols a,
+  .mkt-footer-cols > div > span:not(:first-child) {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+  }
+
+  /* Logo wall. */
+  .mkt-logowall { padding-left: 20px !important; padding-right: 20px !important; }
+  .mkt-logowall-row { gap: 32px !important; }
+}
+
+/* Between 600 and 900 the footer reads better two-up than as one long list. */
+@media (min-width: 601px) and (max-width: 900px) {
+  .mkt-footer-cols { grid-template-columns: repeat(2, minmax(130px, 1fr)) !important; }
+}
+
+/* ══════════════════ Phone tightening (<= 600px) ══════════════════ */
+
+@media (max-width: 600px) {
+  /* Label/value grids: the fixed first column (dates on /changelog, stat labels
+     on /about and the case studies) starves the content column. */
+  .mkt [style*="grid-template-columns"]:is(
+      [style*="100px 1fr"],
+      [style*="110px 1fr"],
+      [style*="120px 1fr"]
+    ):not([style*="120px repeat"]) {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* The homepage hero mockup paints a 172px app sidebar next to the content
+     pane. Below 600px it would leave the pane at ~140px; hiding it is what the
+     real product does at this width and keeps the screenshot legible. */
+  .mkt [style*="width:172px"], .mkt [style*="width: 172px"] { display: none !important; }
+
+  /* Hero button rows stack full width rather than squeezing two pills. */
+  .mkt [class*="frame-"] div[style*="justify-content:center"][style*="gap:12px"],
+  .mkt [class*="frame-"] div[style*="justify-content: center"][style*="gap: 12px"] { flex-wrap: wrap; }
+
+  /* Wide tables and code blocks scroll inside their own box, never the page. */
+  .mkt [class*="frame-"] table { display: block; overflow-x: auto; max-width: 100%; }
+  .mkt [style*="ui-monospace"] { overflow-x: auto; }
+}

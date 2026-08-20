@@ -1,0 +1,37 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import Topbar from "@/components/app/Topbar";
+import Hint from "@/components/ui/Hint";
+import InsightsTabs from "../InsightsTabs";
+import RangeTrend from "../RangeTrend";
+import RangeStat from "../RangeStat";
+import SentimentSplit from "./SentimentSplit";
+import ToastButton from "../ToastButton";
+import ThemesTable from "./ThemesTable";
+import ReceiptExport from "./ReceiptExport";
+import { sentimentSeries } from "@/lib/data/insights";
+import { sentimentSpec } from "../reports";
+
+export const metadata: Metadata = { title: "Sentiment · Answer Engine Insights" };
+
+/* "Export 186 answers" downloads the whole screen as an executive report
+   (../reports.ts): the 74% positive headline with its +3pt delta, the 26%
+   negative split, the leading positive and negative themes, the daily trend as
+   a dated table, the themes table, the answer receipt with its cited sources
+   and sub-queries, and footnotes naming the classifier. */
+
+/* Answer Engine Insights — Sentiment — converted from canvas frame #p2-sentiment.
+   Wired (W2): positive-sentiment trend → TrendChart (ends 74 so the "74% ↑ 3pt"
+   headline is true; data: lib/data/insights.ts); axis dates now match the
+   Jul 7 – Aug 5 window; themes-table rows get row-hover. The frame has no
+   stacked platform bars and no standalone KPI stat cards (headline lives in
+   the chart-card header), so BarChart/KpiCard(sentiment_mix) are not used. */
+export default function Page() {
+  return (
+    <div className="frame-p2-sentiment">
+      <Topbar crumb={["Answer Engine Insights", "Sentiment"]} rangeLive platformNote="Sentiment is scored across all platforms here — the platform filter re-slices Overview." exportLabel="Export 186 answers" exportFilename="nike-insights-sentiment-30d.csv" exportReport={sentimentSpec} />
+      <InsightsTabs />
+      <div style={{padding:"22px 24px",display:"flex",flexDirection:"column",gap:"16px"}}><div style={{display:"grid",gridTemplateColumns:"1fr 372px",gap:"14px"}}><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"17px 19px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{display:"flex",alignItems:"center",gap:"6px",fontSize:"13.5px",fontWeight:"600"}}>{"Positive sentiment"}<Hint text="Whether AI describes you kindly or harshly" /></div><div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"3px"}}>{"how favorably answers describe Nike when it appears"}</div></div><RangeStat series={sentimentSeries} seed="insights:sentiment" metricId="sentiment_mix" valueDecimals={0} deltaDecimals={0} deltaUnit="pt" /></div><RangeTrend series={sentimentSeries} seed="insights:sentiment" yLabels={["85%", "75%", "65%", "55%"]} yDomain={[55, 85]} width={700} height={170} /></div><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"17px 19px"}}><div style={{display:"flex",alignItems:"center",gap:"6px",fontSize:"13.5px",fontWeight:"600"}}>{"What drives it"}<Hint text="Topics behind the praise and complaints" align="right" /></div><SentimentSplit /><div style={{marginTop:"14px",padding:"12px 14px",background:"var(--bg0)",border:"1px solid var(--brd)",borderRadius:"8px"}}><div style={{fontSize:"11px",fontWeight:"600",color:"#4cb782"}}>{"POSITIVE THEMES"}</div><div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"5px"}}>{"Cushioning and comfort · Outsole durability · Return experience"}</div></div><div style={{marginTop:"8px",padding:"12px 14px",background:"var(--bg0)",border:"1px solid var(--brd)",borderRadius:"8px"}}><div style={{fontSize:"11px",fontWeight:"600",color:"#e5636e"}}>{"NEGATIVE THEMES"}</div><div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"5px"}}>{"Price at full retail · Break-in time"}</div></div></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 420px",gap:"14px",alignItems:"start"}}><ThemesTable /><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"17px 19px",display:"flex",flexDirection:"column"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{display:"inline-flex",alignItems:"center",gap:"6px",fontSize:"13.5px",fontWeight:"600"}}>{"Answer receipt"}<Hint text="One real AI answer, shown in full" /></span><ReceiptExport /></div><div style={{fontSize:"12.5px",fontWeight:"500",marginTop:"12px",lineHeight:"1.5"}}>{"\"are the nike pegasus worth it at full price for a 50-mile week\""}</div><div style={{display:"flex",gap:"6px",marginTop:"9px",flexWrap:"wrap"}}><span style={{fontSize:"10px",fontWeight:"600",color:"var(--mut)",background:"var(--bg2)",borderRadius:"4px",padding:"2px 7px"}}>{"CHATGPT"}</span><span style={{fontSize:"10px",fontWeight:"600",color:"var(--mut)",background:"var(--bg2)",borderRadius:"4px",padding:"2px 7px"}}>{"AUG 2"}</span><span style={{fontSize:"10px",fontWeight:"600",color:"var(--mut)",background:"var(--bg2)",borderRadius:"4px",padding:"2px 7px"}}>{"US"}</span><span style={{fontSize:"10px",fontWeight:"600",color:"#e5636e",border:"1px solid rgba(229,99,110,.4)",borderRadius:"4px",padding:"2px 7px"}}>{"NEGATIVE THEME"}</span></div><div style={{marginTop:"12px"}}><div style={{display:"flex",alignItems:"center",gap:"6px",fontSize:"10.5px",fontWeight:"600",color:"var(--fnt)",letterSpacing:".06em"}}>{"ENGINE SUB-QUERIES"}<Hint text="Extra searches the AI ran itself" size={12} /></div><div style={{display:"flex",flexDirection:"column",gap:"5px",marginTop:"7px",fontSize:"11.5px",color:"var(--mut)",fontVariantNumeric:"tabular-nums"}}><span>{"· \"nike pegasus price 2026\""}</span><span>{"· \"nike vs adidas running shoe cost\""}</span></div></div><div style={{marginTop:"12px",background:"var(--bg0)",border:"1px solid var(--brd)",borderRadius:"8px",padding:"13px 15px",fontSize:"12.5px",lineHeight:"1.65",color:"var(--mut)"}}>{"…Nike is the strongest option technically, with "}<span style={{background:"rgba(76,183,130,0.15)",color:"var(--tx)",borderRadius:"3px",padding:"1px 3px"}}>{"best-in-class cushioning"}</span>{", though "}<span style={{background:"rgba(229,99,110,0.15)",color:"var(--tx)",borderRadius:"3px",padding:"1px 3px"}}>{"paying full retail adds up beyond ~40 miles a week"}</span>{" — budget-sensitive runners sometimes choose Adidas…"}</div><div style={{display:"flex",gap:"5px",marginTop:"10px",flexWrap:"wrap"}}><span style={{fontSize:"10px",color:"var(--fnt)",border:"1px solid var(--brd)",borderRadius:"4px",padding:"3px 7px"}}>{"¹ nike.com/pegasus (cached Jun)"}</span><span style={{fontSize:"10px",color:"var(--fnt)",border:"1px solid var(--brd)",borderRadius:"4px",padding:"3px 7px"}}>{"² runnersworld.com"}</span></div><div style={{marginTop:"auto",paddingTop:"14px",display:"flex",gap:"8px"}}><ToastButton message="Creating an action needs a live workspace — this demo is read-only." className="btn-ac" style={{flex:"1",textAlign:"center",fontSize:"12.5px",fontWeight:"500",borderRadius:"7px",padding:"8px 0",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{"Create action"}</ToastButton><Link href="/app/conversations" style={{flex:"1",textAlign:"center",fontSize:"12.5px",fontWeight:"500",color:"var(--tx)",background:"transparent",border:"1px solid var(--brd)",borderRadius:"7px",padding:"8px 0",cursor:"pointer",fontFamily:"inherit"}}>{"View 34 answers"}</Link></div></div></div></div>
+    </div>
+  );
+}

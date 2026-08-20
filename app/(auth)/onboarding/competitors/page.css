@@ -1,0 +1,5 @@
+/* Placeholder text matches the frame's faint field-text color. */
+.frame-onboarding-2 input::placeholder {
+  color: var(--fnt);
+  opacity: 1;
+}

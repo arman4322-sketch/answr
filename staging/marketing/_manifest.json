@@ -1,0 +1,170 @@
+[
+  {
+    "id": "home",
+    "label": "Homepage",
+    "hoverRules": 33,
+    "bytes": 53032
+  },
+  {
+    "id": "pricing",
+    "label": "Pricing",
+    "hoverRules": 28,
+    "bytes": 17830
+  },
+  {
+    "id": "feature",
+    "label": "Feature page template",
+    "hoverRules": 29,
+    "bytes": 25638
+  },
+  {
+    "id": "customers",
+    "label": "Customers",
+    "hoverRules": 27,
+    "bytes": 21383
+  },
+  {
+    "id": "blog",
+    "label": "Blog index",
+    "hoverRules": 33,
+    "bytes": 23002
+  },
+  {
+    "id": "about",
+    "label": "About",
+    "hoverRules": 29,
+    "bytes": 13952
+  },
+  {
+    "id": "f-citations",
+    "label": "Product — Citations",
+    "hoverRules": 31,
+    "bytes": 20944
+  },
+  {
+    "id": "f-conversations",
+    "label": "Product — Conversations & Demand",
+    "hoverRules": 33,
+    "bytes": 19551
+  },
+  {
+    "id": "f-agents",
+    "label": "Product — Agent Analytics",
+    "hoverRules": 31,
+    "bytes": 22874
+  },
+  {
+    "id": "f-actions",
+    "label": "Product — Actions & Workflows",
+    "hoverRules": 30,
+    "bytes": 18533
+  },
+  {
+    "id": "s-inhouse",
+    "label": "Solutions — In-house teams",
+    "hoverRules": 30,
+    "bytes": 30635
+  },
+  {
+    "id": "s-agencies",
+    "label": "Solutions — Agencies",
+    "hoverRules": 30,
+    "bytes": 26064
+  },
+  {
+    "id": "integrations",
+    "label": "Integrations",
+    "hoverRules": 29,
+    "bytes": 17404
+  },
+  {
+    "id": "enterprise",
+    "label": "Enterprise",
+    "hoverRules": 30,
+    "bytes": 15359
+  },
+  {
+    "id": "security",
+    "label": "Security & methodology",
+    "hoverRules": 27,
+    "bytes": 14681
+  },
+  {
+    "id": "i-nav",
+    "label": "Nav — Industries dropdown",
+    "hoverRules": 4,
+    "bytes": 4482
+  },
+  {
+    "id": "i-saas",
+    "label": "Industry — B2B SaaS",
+    "hoverRules": 32,
+    "bytes": 17815
+  },
+  {
+    "id": "i-ecommerce",
+    "label": "Industry — E-commerce & DTC",
+    "hoverRules": 32,
+    "bytes": 17999
+  },
+  {
+    "id": "i-fintech",
+    "label": "Industry — Fintech",
+    "hoverRules": 32,
+    "bytes": 17793
+  },
+  {
+    "id": "i-healthcare",
+    "label": "Industry — Healthcare",
+    "hoverRules": 32,
+    "bytes": 17670
+  },
+  {
+    "id": "i-travel",
+    "label": "Industry — Travel & Hospitality",
+    "hoverRules": 32,
+    "bytes": 17948
+  },
+  {
+    "id": "casestudy",
+    "label": "Case study — Kepler",
+    "hoverRules": 31,
+    "bytes": 15690
+  },
+  {
+    "id": "changelog",
+    "label": "Changelog",
+    "hoverRules": 27,
+    "bytes": 13876
+  },
+  {
+    "id": "guide",
+    "label": "AEO handbook",
+    "hoverRules": 33,
+    "bytes": 14488
+  },
+  {
+    "id": "demo",
+    "label": "Get a demo",
+    "hoverRules": 27,
+    "bytes": 13062
+  },
+  {
+    "id": "blog-article",
+    "label": "Blog — article detail",
+    "hoverRules": 31,
+    "bytes": 16492
+  },
+  {
+    "id": "index",
+    "label": "The Answr Index",
+    "hoverRules": 28,
+    "bytes": 16791
+  },
+  {
+    "id": "notfound",
+    "label": "404",
+    "hoverRules": 32,
+    "bytes": 9719
+  }
+]

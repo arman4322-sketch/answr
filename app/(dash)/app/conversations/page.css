@@ -1,0 +1,20 @@
+.frame-conversations input::placeholder{color:var(--fnt);opacity:1}
+
+/* List rows are real buttons now — reset the UA chrome without touching the
+   frame's inline styles. Background stays transparent here (not inline) so
+   the shared .row-hover rule still wins on hover. */
+.frame-conversations .conv-row{
+  display:block;
+  width:100%;
+  margin:0;
+  text-align:left;
+  font:inherit;
+  color:inherit;
+  background:transparent;
+  -webkit-appearance:none;
+  appearance:none;
+  cursor:pointer;
+}
+
+/* Citation markers and the SOURCES footer are real links to the cited page. */
+.frame-conversations .cite-link:hover{text-decoration:underline}

@@ -1,0 +1,236 @@
+[
+  {
+    "id": "signup",
+    "label": "Sign up",
+    "hoverRules": 0,
+    "bytes": 3481
+  },
+  {
+    "id": "onboarding-1",
+    "label": "Onboarding — step 1",
+    "hoverRules": 0,
+    "bytes": 3290
+  },
+  {
+    "id": "onboarding-2",
+    "label": "Onboarding — step 2",
+    "hoverRules": 0,
+    "bytes": 4071
+  },
+  {
+    "id": "onboarding-3",
+    "label": "Onboarding — step 3",
+    "hoverRules": 0,
+    "bytes": 4133
+  },
+  {
+    "id": "login",
+    "label": "Log in",
+    "hoverRules": 0,
+    "bytes": 3092
+  },
+  {
+    "id": "reset-password",
+    "label": "Reset password",
+    "hoverRules": 0,
+    "bytes": 2131
+  },
+  {
+    "id": "m-empty",
+    "label": "Overview — day zero",
+    "hoverRules": 0,
+    "bytes": 4389
+  },
+  {
+    "id": "overview",
+    "label": "Overview",
+    "hoverRules": 15,
+    "bytes": 34741
+  },
+  {
+    "id": "m-assets",
+    "label": "MISC — All assets",
+    "hoverRules": 3,
+    "bytes": 13051
+  },
+  {
+    "id": "aei",
+    "label": "Answer Engine Insights",
+    "hoverRules": 10,
+    "bytes": 28948
+  },
+  {
+    "id": "p2-regions",
+    "label": "P2 — Regions",
+    "hoverRules": 10,
+    "bytes": 21925
+  },
+  {
+    "id": "p2-audiences",
+    "label": "P2 — Audiences",
+    "hoverRules": 0,
+    "bytes": 16260
+  },
+  {
+    "id": "p2-shopping",
+    "label": "P2 — Shopping",
+    "hoverRules": 0,
+    "bytes": 19176
+  },
+  {
+    "id": "p2-sentiment",
+    "label": "P2 — Sentiment",
+    "hoverRules": 0,
+    "bytes": 18277
+  },
+  {
+    "id": "citations",
+    "label": "Citations",
+    "hoverRules": 10,
+    "bytes": 24240
+  },
+  {
+    "id": "m-watched",
+    "label": "MISC — Watched URLs & source gap",
+    "hoverRules": 0,
+    "bytes": 9670
+  },
+  {
+    "id": "prompts",
+    "label": "Prompts",
+    "hoverRules": 10,
+    "bytes": 18591
+  },
+  {
+    "id": "conversations",
+    "label": "Conversation Explorer",
+    "hoverRules": 10,
+    "bytes": 12381
+  },
+  {
+    "id": "demand",
+    "label": "Demand — watchlists",
+    "hoverRules": 5,
+    "bytes": 14068
+  },
+  {
+    "id": "p2-demand",
+    "label": "P2 — Demand keyword detail",
+    "hoverRules": 0,
+    "bytes": 23410
+  },
+  {
+    "id": "actions",
+    "label": "Actions",
+    "hoverRules": 10,
+    "bytes": 19497
+  },
+  {
+    "id": "p2-action-detail",
+    "label": "P2 — Action detail",
+    "hoverRules": 0,
+    "bytes": 13449
+  },
+  {
+    "id": "p2-workflows",
+    "label": "P2 — Workflows",
+    "hoverRules": 0,
+    "bytes": 12492
+  },
+  {
+    "id": "reports",
+    "label": "Reports",
+    "hoverRules": 10,
+    "bytes": 14763
+  },
+  {
+    "id": "agents",
+    "label": "Agent Analytics",
+    "hoverRules": 10,
+    "bytes": 21380
+  },
+  {
+    "id": "p2-referrals",
+    "label": "P2 — Referrals",
+    "hoverRules": 0,
+    "bytes": 20295
+  },
+  {
+    "id": "m-logs",
+    "label": "MISC — Live logs",
+    "hoverRules": 0,
+    "bytes": 9468
+  },
+  {
+    "id": "settings",
+    "label": "Settings",
+    "hoverRules": 17,
+    "bytes": 14484
+  },
+  {
+    "id": "settings-platforms",
+    "label": "Settings — Platforms",
+    "hoverRules": 17,
+    "bytes": 13781
+  },
+  {
+    "id": "p2-capmap",
+    "label": "P2 — Capability map",
+    "hoverRules": 0,
+    "bytes": 8589
+  },
+  {
+    "id": "m-topic",
+    "label": "MISC — Topic detail",
+    "hoverRules": 0,
+    "bytes": 12617
+  },
+  {
+    "id": "m-export",
+    "label": "MISC — Answers export",
+    "hoverRules": 0,
+    "bytes": 9971
+  },
+  {
+    "id": "m-quality",
+    "label": "MISC — Data quality settings",
+    "hoverRules": 1,
+    "bytes": 11119
+  },
+  {
+    "id": "m-bot",
+    "label": "MISC — Bot detail",
+    "hoverRules": 0,
+    "bytes": 11512
+  },
+  {
+    "id": "m-pagehealth",
+    "label": "MISC — Page detail",
+    "hoverRules": 0,
+    "bytes": 10272
+  },
+  {
+    "id": "m-alerts",
+    "label": "MISC — Alerts",
+    "hoverRules": 0,
+    "bytes": 11099
+  },
+  {
+    "id": "m-wizard",
+    "label": "MISC — Report request",
+    "hoverRules": 0,
+    "bytes": 9437
+  },
+  {
+    "id": "m-score",
+    "label": "MISC — Content score",
+    "hoverRules": 0,
+    "bytes": 10219
+  },
+  {
+    "id": "m-surfaces",
+    "label": "MISC — Quick surfaces",
+    "hoverRules": 0,
+    "bytes": 11834
+  }
+]
