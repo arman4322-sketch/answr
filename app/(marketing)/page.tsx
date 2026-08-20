@@ -253,19 +253,19 @@ export default function HomePage() {
 <div style={{padding:"0 48px 40px",textAlign:"center"}}>
 <div style={{display:"flex",justifyContent:"center",gap:"14px",marginTop:"26px",flexWrap:"wrap"}}>
 <span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
-<span style={{color:"#e8b34b",letterSpacing:".05em"}}>{"★★★★★"}
+<span style={{color:"var(--ac)"}}>{"◆"}
 </span>
-<span style={{color:"var(--tx)",fontWeight:"600"}}>{"4.8"}
-</span>{" on G2 · 140+ reviews"}
+<span style={{color:"var(--tx)",fontWeight:"600"}}>{"5 engines"}
+</span>{" — ChatGPT, Claude, Gemini, Perplexity, AI Overviews"}
 </span>
 <span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
 <span style={{width:"6px",height:"6px",borderRadius:"50%",background:"var(--ac)"}} />
-<span style={{color:"var(--tx)",fontWeight:"600"}}>{"Leader"}
-</span>{" — G2 Winter 2026, AEO category"}
+<span style={{color:"var(--tx)",fontWeight:"600"}}>{"Answer Engine Optimization"}
+</span>{" — visibility, citations & agents"}
 </span>
 <span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
 <span style={{color:"var(--ac)"}}>{"✓"}
-</span>{"SOC 2 Type II · GDPR"}
+</span>{" First-party data · no scraping"}
 </span>
 </div>
 </div>
@@ -702,7 +702,7 @@ export default function HomePage() {
 </div>
 <div style={{fontSize:"32px",fontWeight:"600",letterSpacing:"-0.02em",lineHeight:"1.2",marginTop:"12px",textWrap:"balance"}}>{"Data your legal team can sign off on"}
 </div>
-<div style={{fontSize:"14.5px",color:"var(--mut)",lineHeight:"1.65",marginTop:"14px",textWrap:"pretty"}}>{"Visibility data is only useful if you can defend how it was collected. Answr samples answer engines directly and sources conversation data exclusively from consented, compensated panels."}
+<div style={{fontSize:"14.5px",color:"var(--mut)",lineHeight:"1.65",marginTop:"14px",textWrap:"pretty"}}>{"Visibility data is only useful if you can defend how it was collected. Answr samples answer engines through their official APIs and captures crawler and referral activity as first-party data on your own site — no scraped chats, no gray-market logs."}
 </div>
 <Link href="/security" style={{display:"inline-flex",alignItems:"center",gap:"9px",fontSize:"13px",fontWeight:"500",color:"var(--tx)",background:"rgba(142,124,242,0.10)",borderRadius:"999px",padding:"7px 8px 7px 16px",marginTop:"18px"}} className="hv15">{"Read the security & methodology page"}
 <span style={{display:"inline-flex",width:"20px",height:"20px",borderRadius:"50%",background:"var(--ac)",color:"#fff",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:"700"}}>{"→"}
@@ -711,15 +711,15 @@ export default function HomePage() {
 </div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px"}}>
 <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"12px",padding:"22px"}}>
-<div style={{fontSize:"13.5px",fontWeight:"600"}}>{"SOC 2 Type II"}
+<div style={{fontSize:"13.5px",fontWeight:"600"}}>{"First-party data model"}
 </div>
-<div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"7px"}}>{"Audited annually. Report available under NDA in the trust center."}
+<div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"7px"}}>{"Answers via official platform APIs and your own site telemetry — no scraped chats, no gray-market logs."}
 </div>
 </div>
 <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"12px",padding:"22px"}}>
-<div style={{fontSize:"13.5px",fontWeight:"600"}}>{"GDPR · DPA · residency"}
+<div style={{fontSize:"13.5px",fontWeight:"600"}}>{"You control the region"}
 </div>
-<div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"7px"}}>{"EU or US data residency, standard DPA, and subprocessor list on request."}
+<div style={{fontSize:"12.5px",color:"var(--mut)",lineHeight:"1.6",marginTop:"7px"}}>{"Deploy in the region you choose, encrypted in transit, with a full workspace purge within 30 days of a closed account."}
 </div>
 </div>
 <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"12px",padding:"22px"}}>

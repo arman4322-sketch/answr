@@ -45,7 +45,7 @@ export default function CreateActionModal({ platform, onClose }: { platform: Pla
       toast("Give the action a title first.");
       return;
     }
-    toast(`Action #${ACTION_DRAFT.queueId} “${title.trim()}” added to the queue — est. ${impact}, effort ${effort}. Drafts persist on live workspaces.`);
+    toast(`Action #${ACTION_DRAFT.queueId} “${title.trim()}” drafted — est. ${impact}, effort ${effort}. On a live workspace this is added to the queue; the demo doesn't save it.`);
     onClose();
   }
 

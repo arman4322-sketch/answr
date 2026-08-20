@@ -124,7 +124,7 @@ export default function ReportWizardModal() {
       return;
     }
     setOpen(false);
-    toast(`Request sent — ${cadence.toLowerCase()} report, ${chosen.length} metrics. A strategist scopes it within 2 business days.`);
+    toast(`Demo only — nothing was sent. On a live workspace this requests a ${cadence.toLowerCase()} report (${chosen.length} metrics) from the Answr team.`);
   }
 
   return (
@@ -208,7 +208,7 @@ export default function ReportWizardModal() {
               </div>
             </div>
             <button type="button" className="btn-ac" onClick={requestBuild} style={{display:"block",width:"100%",textAlign:"center",fontSize:"13px",fontWeight:"500",borderRadius:"7px",padding:"10px 0",marginTop:"18px",border:"none",fontFamily:"inherit",cursor:"pointer"}}>{"Request build"}</button>
-            <div style={{fontSize:"11px",color:"var(--fnt)",marginTop:"10px",textAlign:"center",lineHeight:"1.5"}}>{"A designed dashboard within 2 business days · or use the "}<button type="button" className="wiz-trigger" onClick={() => { setOpen(false); document.getElementById("report-name")?.focus(); }} style={{color:"var(--ac)",background:"none",border:"none",padding:"0",font:"inherit",cursor:"pointer"}}>{"self-serve builder"}</button></div>
+            <div style={{fontSize:"11px",color:"var(--fnt)",marginTop:"10px",textAlign:"center",lineHeight:"1.5"}}>{"On a live workspace, a designer scopes this within 2 business days · or use the "}<button type="button" className="wiz-trigger" onClick={() => { setOpen(false); document.getElementById("report-name")?.focus(); }} style={{color:"var(--ac)",background:"none",border:"none",padding:"0",font:"inherit",cursor:"pointer"}}>{"self-serve builder"}</button></div>
           </div>
         </div>
       )}

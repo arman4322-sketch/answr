@@ -224,11 +224,11 @@ export default function ReportBuilder() {
       return;
     }
     setConfirmation(
-      `✓ ${trimmed} generated — ${chosen} section${chosen === 1 ? "" : "s"} · ${format} · ${recipients.length} recipient${
+      `Preview only — on a live workspace this generates ${trimmed} (${chosen} section${chosen === 1 ? "" : "s"} · ${format} · ${recipients.length} recipient${
         recipients.length === 1 ? "" : "s"
-      }. The demo workspace builds it from the fixed 30-day fixture.`
+      }). Nothing is downloaded in the demo.`
     );
-    toast(`Generating ${trimmed} — ${chosen} section${chosen === 1 ? "" : "s"} · ${format}.`);
+    toast(`Demo preview — ${trimmed} isn't produced here.`);
   }
 
   function saveSchedule() {
@@ -238,9 +238,9 @@ export default function ReportBuilder() {
       return;
     }
     setConfirmation(
-      `✓ Schedule saved — ${trimmed}, ${schedule}, to ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}.`
+      `Saved for this session only — on a live workspace, ${trimmed} would send ${schedule} to ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}.`
     );
-    toast("Saved here only — scheduled delivery runs on live workspaces.");
+    toast("Demo only — scheduled delivery runs on live workspaces.");
   }
 
   return (

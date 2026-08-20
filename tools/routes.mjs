@@ -62,7 +62,6 @@ export const DASHBOARD_ROUTES = {
   "m-logs": "/app/agents/logs",
   settings: "/app/settings",
   "settings-platforms": "/app/settings/platforms",
-  "p2-capmap": "/app/capability-map",
   "m-topic": "/app/insights/topics/revenue-forecasting",
   "m-export": "/app/citations", // modal over Citations — integrate as component
   "m-quality": "/app/settings/data-quality",

@@ -110,7 +110,7 @@ export default function Footer() {
         }}
       >
         <span>© 2026 Answr, Inc.</span>
-        <span>SOC 2 Type II · GDPR</span>
+        <span>Built for the answer-engine era</span>
       </div>
     </div>
   );

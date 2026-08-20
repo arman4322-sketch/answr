@@ -22,12 +22,12 @@ export default function AboutPage() {
         <div style={{display:"grid",gridTemplateColumns:"100px 1fr",gap:"24px",padding:"18px 0",borderTop:"1px solid var(--brd)"}}>
           <div style={{fontSize:"12px",fontWeight:"600",color:"var(--ac)",fontVariantNumeric:"tabular-nums"}}>{"2025"}</div>
           <div style={{fontSize:"14px",color:"var(--mut)",lineHeight:"1.6"}}>
-            <span style={{color:"var(--tx)",fontWeight:"500"}}>{"The consented panel network launches"}</span>{" — 2.1M conversations a month — alongside Agent Analytics and the Actions queue."}</div>
+            <span style={{color:"var(--tx)",fontWeight:"500"}}>{"First-party telemetry ships"}</span>{" — capturing AI crawler and referral activity — alongside Agent Analytics and the Actions queue."}</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"100px 1fr",gap:"24px",padding:"18px 0",borderTop:"1px solid var(--brd)"}}>
           <div style={{fontSize:"12px",fontWeight:"600",color:"var(--ac)",fontVariantNumeric:"tabular-nums"}}>{"2026"}</div>
           <div style={{fontSize:"14px",color:"var(--mut)",lineHeight:"1.6"}}>
-            <span style={{color:"var(--tx)",fontWeight:"500"}}>{"2,400 teams, the Answr Index, G2 category leader."}</span>{" Demand tracking and Workflows ship; SOC 2 Type II renewed."}</div>
+            <span style={{color:"var(--tx)",fontWeight:"500"}}>{"The Answr Index goes public."}</span>{" Demand tracking and Workflows ship; SOC 2 and GDPR alignment work begins."}</div>
         </div>
       </div>
       <div style={{borderTop:"1px solid var(--brd)",padding:"64px 48px",maxWidth:"1280px",margin:"0 auto"}}>

@@ -86,7 +86,7 @@ export default function AddPromptsModal() {
       toast("Nothing to add — paste prompts one per line, or use Suggest prompts.");
       return;
     }
-    toast(`${adding} prompt${adding === 1 ? "" : "s"} queued for tracking — ${after.toLocaleString()} of ${PROMPT_QUOTA.limit.toLocaleString()} used. First run lands with tomorrow's sample; prompt sets save on live workspaces.`);
+    toast(`${adding} prompt${adding === 1 ? "" : "s"} added to this demo list — ${after.toLocaleString()} of ${PROMPT_QUOTA.limit.toLocaleString()} in the sample quota. On a live workspace, tracked prompts run on tomorrow's sample; nothing is saved in the demo.`);
     setText("");
     close();
   }
