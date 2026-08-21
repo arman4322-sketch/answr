@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Answr — Technical Documentation</title>
+<style>
+  :root{ --ink:#1f2430; --mut:#5b6170; --faint:#8b90a0; --line:#e3e5ec; --accent:#5a4fd0;
+    --code-bg:#f5f5f8; --th:#eef0f6; --good:#1f9d6b; --amber:#b9791a; }
+  *{box-sizing:border-box}
+  @page{ size:Letter; margin:0.75in 0.7in; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; margin:0; }
+  h1,h2,h3,h4{ font-family:"Helvetica Neue",Arial,sans-serif; color:var(--ink); line-height:1.2; }
+  h1{ font-size:26pt; margin:0 0 4pt; letter-spacing:-.5pt; }
+  h2{ font-size:15pt; margin:20pt 0 6pt; padding-bottom:3pt; border-bottom:1.5px solid var(--accent); color:#2a2440; }
+  h3{ font-size:12pt; margin:13pt 0 4pt; color:#33384a; }
+  h4{ font-size:10.5pt; margin:10pt 0 3pt; color:var(--accent); }
+  p{ margin:0 0 7pt; }
+  ul,ol{ margin:0 0 8pt; padding-left:18px; }
+  li{ margin:0 0 3pt; }
+  code{ font-family:"SF Mono",Consolas,monospace; font-size:8.8pt; background:var(--code-bg); padding:1px 4px; border-radius:3px; color:#33384a; }
+  pre{ background:var(--code-bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; font-family:"SF Mono",Consolas,monospace; font-size:8.6pt; line-height:1.45; overflow:hidden; white-space:pre-wrap; margin:6pt 0 10pt; }
+  table{ border-collapse:collapse; width:100%; margin:6pt 0 11pt; font-size:9pt; }
+  th{ background:var(--th); text-align:left; padding:6px 8px; border:1px solid var(--line); font-weight:700; color:#33384a; }
+  td{ padding:6px 8px; border:1px solid var(--line); vertical-align:top; }
+  td:first-child{ font-weight:600; white-space:nowrap; }
+  .lead{ color:var(--mut); font-size:11pt; margin:2pt 0 0; }
+  .meta{ color:var(--faint); font-size:9pt; margin-top:6pt; font-family:"SF Mono",Consolas,monospace; }
+  .sec{ break-inside:avoid-page; }
+  h2{ break-after:avoid; }
+  table,pre,.diagram{ break-inside:avoid; }
+  .cover{ border-bottom:2px solid var(--accent); padding-bottom:14pt; margin-bottom:6pt; }
+  .badge{ display:inline-block; font-size:8pt; letter-spacing:1px; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .toc{ background:#faf9fc; border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:14pt 0; font-size:9.5pt; }
+  .toc ol{ columns:2; column-gap:28px; margin:0; padding-left:16px; }
+  .toc li{ margin-bottom:2pt; }
+  .note{ background:#f4f2fd; border-left:3px solid var(--accent); padding:8px 12px; border-radius:0 6px 6px 0; font-size:9.3pt; margin:8pt 0; color:#33384a; }
+  .diagram{ border:1px solid var(--line); border-radius:8px; padding:12px; margin:8pt 0 12pt; background:#fbfbfd; }
+  .flow{ display:flex; align-items:stretch; gap:6px; font-size:8.4pt; }
+  .flow .box{ flex:1; border:1px solid var(--line); border-radius:6px; padding:7px 8px; background:#fff; text-align:center; }
+  .flow .box b{ display:block; font-size:8.8pt; color:#2a2440; }
+  .flow .arrow{ align-self:center; color:var(--accent); font-weight:700; }
+  .layer{ border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:5px; background:#fff; font-size:9pt; }
+  .layer b{ color:#2a2440; }
+  .pill{ display:inline-block; font-size:7.5pt; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:4px; }
+  .pill.real{ background:#e5f4ec; color:var(--good); }
+  .pill.key{ background:#eef1fb; color:var(--accent); }
+  .small{ font-size:8.6pt; color:var(--mut); }
+  .pagebreak{ break-before:page; }
+</style></head>
+<body>
+
+<div class="cover">
+  <span class="badge">Technical documentation · Acquisition diligence</span>
+  <h1>Answr — Technical Documentation</h1>
+  <p class="lead">Everything a technical team needs to understand, run, deploy, and extend the Answr platform.</p>
+  <p class="meta">Next.js 16 · React 19 · TypeScript · ~26,600 LOC · 73 routes · 16 API endpoints · 38 library modules · Last updated 21 Aug 2026</p>
+</div>
+
+<div class="toc">
+  <b>Contents</b>
+  <ol>
+    <li>System overview &amp; architecture</li>
+    <li>Technology stack</li>
+    <li>Repository structure</li>
+    <li>Application surfaces &amp; routing</li>
+    <li>The engine (data &amp; logic layers)</li>
+    <li>API surface</li>
+    <li>Data model &amp; storage</li>
+    <li>Configuration &amp; environment variables</li>
+    <li>Running locally</li>
+    <li>Deployment</li>
+    <li>Security model</li>
+    <li>How to extend it</li>
+    <li>Build, quality &amp; testing</li>
+    <li>Known limitations &amp; notes</li>
+    <li>Key-file reference</li>
+  </ol>
+</div>
+
+<div class="sec">
+<h2>1 · System overview &amp; architecture</h2>
+<p>Answr is an <b>Answer Engine Optimization (AEO)</b> analytics platform: it measures how a brand
+appears in AI assistant answers (ChatGPT, Claude, Gemini, Perplexity, Google AI Overviews), traces
+the citations behind those answers, tracks AI crawlers hitting a site, and turns gaps into a scored
+action queue.</p>
+<p>It is a single <b>Next.js 16 App Router</b> application (one deployable) with three concerns:
+a public marketing site, a gated analytics dashboard, and a backend "engine" of server routes and
+library modules. Pages are React <b>server components</b> by default; interactivity lives in small
+<code>"use client"</code> leaf components. There is no separate backend service — API routes and the
+engine run inside the same Next.js deployment.</p>
+
+<h4>Request flow</h4>
+<div class="diagram">
+  <div class="flow">
+    <div class="box"><b>Browser</b>request</div>
+    <div class="arrow">→</div>
+    <div class="box"><b>proxy.ts</b>edge: AI-crawler capture + access gate</div>
+    <div class="arrow">→</div>
+    <div class="box"><b>Route</b>server component / API route</div>
+    <div class="arrow">→</div>
+    <div class="box"><b>lib/**</b>engine: data, auth, scoring, providers</div>
+    <div class="arrow">→</div>
+    <div class="box"><b>Store</b>memory or Redis/KV</div>
+  </div>
+</div>
+
+<h4>Engine layers</h4>
+<div class="diagram">
+  <div class="layer"><b>Presentation</b> — 73 routes (marketing / dashboard / auth), 28 shared components, a token-based design system.</div>
+  <div class="layer"><b>API</b> — 16 server routes (auth, telemetry, lead/waitlist, prompts/actions, sampler, scoring, integrations).</div>
+  <div class="layer"><b>Domain logic</b> — scoring (answers → metrics), sampler (run providers), telemetry aggregation, export/report engine, filter/window engine.</div>
+  <div class="layer"><b>Integrations</b> — provider clients (Perplexity, OpenAI, Anthropic, Gemini, DataForSEO) behind a uniform interface + registry.</div>
+  <div class="layer"><b>Persistence</b> — a generic document store: in-memory now, durable Redis/KV when a credential is set (same interface; Postgres-ready).</div>
+</div>
+<p class="small">Design principle throughout: <b>works in-memory now, becomes production-durable when a
+storage key is added</b> — no code change. Provider- and storage-dependent features are written and
+wired but inert until a key is present, so the platform runs end-to-end with zero external accounts.</p>
+</div>
+
+<div class="sec">
+<h2>2 · Technology stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+  <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Server components, route groups, the new Proxy (middleware) convention</td></tr>
+  <tr><td>UI</td><td>React 19 · TypeScript 5</td><td>Type-clean (<code>tsc --noEmit</code> passes)</td></tr>
+  <tr><td>Styling</td><td>Tailwind v4 + CSS variables</td><td>Token-based design system in <code>app/globals.css</code>; inline styles from the design canvases</td></tr>
+  <tr><td>Charts / maps</td><td>d3-geo, topojson-client, world-atlas</td><td>Region map; other charts are hand-built SVG/Canvas</td></tr>
+  <tr><td>Icons</td><td>simple-icons</td><td>Brand/tech logos with a graceful fallback chain</td></tr>
+  <tr><td>Runtime deps</td><td>8 total</td><td>Deliberately lean — no UI kit, no state library, no ORM lock-in</td></tr>
+  <tr><td>Hosting</td><td>Vercel + GitHub auto-deploy</td><td>Node 22.x pinned (<code>engines</code> + <code>.nvmrc</code>)</td></tr>
+  <tr><td>Optional durable store</td><td>Upstash / Vercel Redis (REST)</td><td>Spoken over plain <code>fetch</code>; no SDK dependency</td></tr>
+</table>
+</div>
+
+<div class="sec">
+<h2>3 · Repository structure</h2>
+<pre>answr/
+├─ app/
+│  ├─ (marketing)/        31 public pages (home, product/*, industries/*, pricing, legal, waitlist…)
+│  ├─ (dash)/app/         36 dashboard screens (overview, insights, citations, agents, settings…)
+│  ├─ (auth)/             login, signup, reset, 3-step onboarding
+│  ├─ api/                16 server routes
+│  ├─ globals.css         design-system tokens (colors, type, spacing)
+│  ├─ layout.tsx          root layout (metadata, skip link, referral snippet)
+│  ├─ robots.ts / sitemap.ts / opengraph-image.tsx
+├─ components/
+│  ├─ app/                dashboard shell (Sidebar, Topbar, charts, KpiCard, CommandK…)
+│  ├─ marketing/          Nav, Footer, LogoWall, LegalDoc
+│  └─ ui/                 shared UI (buttons, toaster, sparkline, filter pills…)
+├─ lib/
+│  ├─ db/                 persistence layer (index.ts store + entities.ts)
+│  ├─ auth/               scrypt auth + sessions
+│  ├─ scoring/            answers → metrics
+│  ├─ sampler/            nightly run + answer store
+│  ├─ providers/          Perplexity/OpenAI/Anthropic/Gemini/DataForSEO clients + registry
+│  ├─ telemetry/          AI-crawler capture store (memory + KV)
+│  ├─ export/             CSV report engine
+│  ├─ filters/            date/platform windowing
+│  ├─ data/               curated demo ("Nike") fixtures
+│  ├─ metrics.ts          31-metric dictionary (definitions + formulas)
+│  ├─ gate.ts             demo access gate + cookie names
+│  └─ bots.ts             AI crawler / referrer catalog
+├─ proxy.ts               edge: AI-crawler capture + access gate
+├─ vercel.json            nightly cron → /api/runs/execute
+└─ (docs: HANDOFF, INTEGRATIONS, METRICS, PLATFORM_OVERVIEW, …)</pre>
+</div>
+
+<div class="sec">
+<h2>4 · Application surfaces &amp; routing</h2>
+<p>Routing uses Next.js <b>route groups</b>, each with its own shared layout:</p>
+<table>
+  <tr><th>Group</th><th>Shell (layout)</th><th>Access</th></tr>
+  <tr><td>(marketing)</td><td>Nav + Footer, 1440px max width</td><td>Public</td></tr>
+  <tr><td>(dash)/app</td><td>Sidebar + Topbar, persistent FilterProvider</td><td>Gated (see §11)</td></tr>
+  <tr><td>(auth)</td><td>Centered card on a dot-grid</td><td>Public (login/signup)</td></tr>
+</table>
+<p>Every request first passes <code>proxy.ts</code> (the Next 16 "Proxy" / edge middleware), which
+(a) matches the user-agent against the AI-crawler catalog and fires a non-blocking capture event, and
+(b) enforces access to <code>/app/*</code>. Pages are server components; the persistent dashboard
+frame keeps filter and brand selection alive across navigation.</p>
+</div>
+
+<div class="sec">
+<h2>5 · The engine (data &amp; logic layers)</h2>
+
+<h3>Persistence — <code>lib/db</code></h3>
+<p>A generic document store with a single <code>Db</code> interface (<code>list / get / put / remove</code>
+over named JSON collections). <code>MemoryDb</code> runs with zero setup; <code>KvDb</code> speaks the
+Upstash REST protocol via <code>fetch</code>. <code>db()</code> auto-selects the durable store when
+<code>KV_REST_API_*</code> or <code>UPSTASH_REDIS_REST_*</code> is set, else memory — no code change.
+<code>entities.ts</code> defines the typed tables (workspaces, users, sessions, prompts, actions,
+leads, view events), each tenant-scoped by <code>workspaceId</code>. <span class="pill real">real</span></p>
+
+<h3>Authentication — <code>lib/auth</code></h3>
+<p>A complete account system on Node <code>crypto</code>: scrypt password hashing (salted,
+timing-safe), opaque session tokens, and user/session records in the data layer. Powers
+<code>/api/auth/{signup,login,me,logout}</code>. The dashboard layout validates sessions server-side.
+<span class="pill real">real</span></p>
+
+<h3>Scoring — <code>lib/scoring</code></h3>
+<p>Pure functions that turn sampled answers into the metrics defined in <code>lib/metrics.ts</code>:
+position-weighted visibility score, share of voice, citation counts, owned-citation share,
+average answer position, and rank-first. Demonstrable at <code>/api/scoring/preview</code>.
+<span class="pill real">real</span></p>
+
+<h3>Sampler — <code>lib/sampler</code></h3>
+<p>The nightly job: reads the tracked prompt set, runs every configured provider against each prompt,
+normalizes answers + citations, and writes runs to the answer store (memory + KV). Triggered by the
+Vercel cron → <code>/api/runs/execute</code>. Refuses to run without a secret so it never spends
+provider credits unattended. <span class="pill key">activates with keys</span></p>
+
+<h3>Provider integrations — <code>lib/providers</code></h3>
+<p>A uniform <code>AnswerProvider</code> interface (<code>sample(prompt) → { text, citations }</code>)
+with thin clients for Perplexity, OpenAI, Anthropic, Gemini, and DataForSEO, plus a registry that
+reports which are configured. Each reads its env key and is inert until one is present.
+<span class="pill key">activates with keys</span></p>
+
+<h3>First-party telemetry — <code>lib/telemetry</code> + <code>proxy.ts</code></h3>
+<p>The one pipeline producing real (non-fixture) data today: <code>proxy.ts</code> → <code>/api/ingest</code>
+→ store → <code>/app/live</code>. Captures AI crawlers hitting the site (which never execute
+JavaScript) and, via <code>public/snippet.js</code> + <code>/api/collect</code>, AI referrals.
+<span class="pill real">real</span></p>
+
+<h3>Export &amp; filters</h3>
+<p><code>lib/export</code> is a real CSV report engine (titled envelopes, executive summary,
+per-module specs) used across ~30 controls. <code>lib/filters</code> is a deterministic
+date/platform windowing engine that re-slices charts and honestly discloses the export window.
+<span class="pill real">real</span></p>
+</div>
+
+<div class="sec">
+<h2>6 · API surface</h2>
+<p>16 server routes under <code>app/api</code>. "Gated" = requires the dashboard access cookie.</p>
+<table>
+  <tr><th>Route</th><th>Method</th><th>Purpose</th><th>Auth</th></tr>
+  <tr><td>/api/session</td><td>POST / DELETE</td><td>Demo gate sign-in / sign-out</td><td>Public</td></tr>
+  <tr><td>/api/auth/signup</td><td>POST</td><td>Create account (scrypt) + session</td><td>Public</td></tr>
+  <tr><td>/api/auth/login</td><td>POST</td><td>Authenticate + session</td><td>Public</td></tr>
+  <tr><td>/api/auth/me</td><td>GET</td><td>Current session user</td><td>Session</td></tr>
+  <tr><td>/api/auth/logout</td><td>POST</td><td>Destroy session</td><td>Session</td></tr>
+  <tr><td>/api/ingest</td><td>POST</td><td>AI-crawler telemetry ingest</td><td>Secret / origin</td></tr>
+  <tr><td>/api/collect</td><td>POST</td><td>AI-referral ingest (snippet)</td><td>Secret / origin</td></tr>
+  <tr><td>/api/telemetry</td><td>GET</td><td>Telemetry summary + store status</td><td>Public</td></tr>
+  <tr><td>/api/telemetry/test-hit</td><td>POST</td><td>Fire a synthetic crawler hit (proof)</td><td>Public</td></tr>
+  <tr><td>/api/lead</td><td>POST / GET</td><td>Capture leads / list them</td><td>POST public · GET gated</td></tr>
+  <tr><td>/api/prompts</td><td>POST / GET</td><td>Persist / list tracked prompts</td><td>Gated</td></tr>
+  <tr><td>/api/actions</td><td>POST / GET</td><td>Persist / list action items</td><td>Gated</td></tr>
+  <tr><td>/api/runs/execute</td><td>GET / POST</td><td>Run the sampler (cron / manual)</td><td>Secret</td></tr>
+  <tr><td>/api/scoring/preview</td><td>GET</td><td>Scoring engine output (live proof)</td><td>Gated</td></tr>
+  <tr><td>/api/integrations/test</td><td>POST</td><td>Verify a provider key (one live call)</td><td>Gated</td></tr>
+  <tr><td>/api/waitlist/view</td><td>POST / GET</td><td>Record view / funnel stats</td><td>POST public · GET gated</td></tr>
+</table>
+</div>
+
+<div class="sec">
+<h2>7 · Data model &amp; storage</h2>
+<p>All records are JSON documents in named collections, keyed by id, tenant-scoped by
+<code>workspaceId</code> where relevant.</p>
+<table>
+  <tr><th>Entity</th><th>Collection</th><th>Key fields</th></tr>
+  <tr><td>Workspace</td><td>workspaces</td><td>id, name, domain</td></tr>
+  <tr><td>User</td><td>users</td><td>id, email, passwordHash (scrypt), workspaceId</td></tr>
+  <tr><td>Session</td><td>sessions</td><td>id (token), userId, workspaceId, expiresAt</td></tr>
+  <tr><td>Tracked prompt</td><td>prompts</td><td>id, workspaceId, text, intent</td></tr>
+  <tr><td>Action item</td><td>actions</td><td>id, workspaceId, title, impact, effort, status</td></tr>
+  <tr><td>Lead</td><td>leads</td><td>id, email, company, source, utmSource, referrer</td></tr>
+  <tr><td>View event</td><td>views</td><td>id, page, source, ts (waitlist funnel)</td></tr>
+  <tr><td>Crawler / referral event</td><td>telemetry</td><td>bot, path, status, verification (first-party capture)</td></tr>
+  <tr><td>Prompt run / answer</td><td>sampler</td><td>prompt, per-provider text + citations (sampler output)</td></tr>
+</table>
+<p><b>Storage backends:</b> in-process memory (default) or Redis/KV (when a credential is set),
+selected automatically behind the same interface. The design is Postgres-ready — a Postgres
+implementation of the <code>Db</code> interface drops in without touching callers.</p>
+</div>
+
+<div class="sec pagebreak">
+<h2>8 · Configuration &amp; environment variables</h2>
+<p>Nothing is required to run the demo. Each variable below turns on a capability.</p>
+<table>
+  <tr><th>Variable</th><th>Enables</th></tr>
+  <tr><td>DEMO_PASSWORD</td><td>Rotates the demo access passphrase (default <code>answr-demo</code>)</td></tr>
+  <tr><td>ANSWR_INGEST_SECRET</td><td>Authenticates external senders to the ingest endpoints</td></tr>
+  <tr><td>CRON_SECRET</td><td>Arms the nightly sampler (required for it to run)</td></tr>
+  <tr><td>KV_REST_API_URL / KV_REST_API_TOKEN</td><td>Durable store (Vercel Redis)</td></tr>
+  <tr><td>UPSTASH_REDIS_REST_URL / _TOKEN</td><td>Durable store (Upstash — alternative)</td></tr>
+  <tr><td>PERPLEXITY_API_KEY</td><td>Perplexity Sonar sampling lane</td></tr>
+  <tr><td>GEMINI_API_KEY</td><td>Gemini grounded sampling lane</td></tr>
+  <tr><td>DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD</td><td>Google AI Overviews + demand data</td></tr>
+  <tr><td>ANTHROPIC_API_KEY</td><td>Claude lane + sentiment classification</td></tr>
+  <tr><td>OPENAI_API_KEY</td><td>ChatGPT lane</td></tr>
+  <tr><td>RESEND_API_KEY / LEAD_NOTIFY_EMAIL / LEAD_FROM_EMAIL</td><td>Lead + transactional email</td></tr>
+  <tr><td>*_MODEL, DATAFORSEO_LOCATION / _LANGUAGE</td><td>Optional per-provider overrides (sensible defaults)</td></tr>
+</table>
+<p class="small">Verified: a <code>grep</code> for <code>process.env</code> shows these are the only variables the
+code reads. No secret is committed to the repository.</p>
+</div>
+
+<div class="sec">
+<h2>9 · Running locally</h2>
+<p>Prerequisites: Node 22.x. No database or keys needed for the demo.</p>
+<pre>npm install
+npm run dev        # dev server (defaults to port 3000; project launch config uses 3201)
+npm run build      # production build
+npx tsc --noEmit   # type-check</pre>
+<p>Open the app, go to <code>/login</code>, and sign in with the demo passphrase (default
+<code>dana@nike.com</code> / <code>answr-demo</code>) to reach the dashboard.</p>
+</div>
+
+<div class="sec">
+<h2>10 · Deployment</h2>
+<p>Deployed on <b>Vercel</b> with <b>GitHub auto-deploy</b>: a push to <code>main</code> builds and
+promotes to production; branches get preview URLs. <code>vercel.json</code> schedules the nightly
+sampler cron. Node is pinned to 22.x. To deploy under a new account: connect the repo to a Vercel
+project, set the desired environment variables, point the domain, and push.</p>
+</div>
+
+<div class="sec">
+<h2>11 · Security model</h2>
+<ul>
+  <li><b>Access gate</b> — <code>/app/*</code> is protected. <code>proxy.ts</code> does an edge-safe cookie
+    presence check; the dashboard layout then validates for real, granting access by <i>either</i> the
+    demo passphrase <i>or</i> a valid account session, and bouncing invalid sessions.</li>
+  <li><b>Authentication</b> — scrypt password hashing (salted, timing-safe), opaque session tokens,
+    HTTP-only cookies. A security review is recommended before production reliance.</li>
+  <li><b>Ingest hardening</b> — the telemetry ingest endpoints accept a shared secret
+    (<code>ANSWR_INGEST_SECRET</code>) and check origin; set the secret in production.</li>
+  <li><b>Sampler safety</b> — the sampler refuses to run without <code>CRON_SECRET</code>, so provider
+    credits are never spent unattended.</li>
+  <li><b>Secrets</b> — none are committed; all live in the deployment environment.</li>
+</ul>
+</div>
+
+<div class="sec">
+<h2>12 · How to extend it</h2>
+<table>
+  <tr><th>Task</th><th>How</th></tr>
+  <tr><td>Add an AI provider</td><td>Implement the <code>AnswerProvider</code> interface in <code>lib/providers</code>, add it to the registry array — the Integrations UI and sampler pick it up automatically.</td></tr>
+  <tr><td>Add / change a metric</td><td>Edit <code>lib/metrics.ts</code> (definition + formula) and the corresponding function in <code>lib/scoring</code>.</td></tr>
+  <tr><td>Swap to Postgres</td><td>Implement the <code>Db</code> interface (<code>lib/db</code>) over Postgres; no caller changes.</td></tr>
+  <tr><td>Add a page</td><td>Create a <code>page.tsx</code> in the appropriate route group; it inherits that group's shell.</td></tr>
+  <tr><td>Wire scoring into a dashboard</td><td>Read accumulated runs from the answer store, call <code>scoreRuns()</code>, and render in place of the <code>lib/data/*</code> fixture for that screen.</td></tr>
+  <tr><td>Turn on real account access</td><td>Make <code>lib/auth</code> sessions the sole gate for <code>/app</code> (JWT-at-edge or the existing node layout guard) and retire the demo passphrase.</td></tr>
+</table>
+</div>
+
+<div class="sec">
+<h2>13 · Build, quality &amp; testing</h2>
+<ul>
+  <li><b>Type-safe</b> — <code>tsc --noEmit</code> passes with zero errors; no page is a client component.</li>
+  <li><b>Clean build</b> — <code>next build</code> generates 78 static pages with no warnings.</li>
+  <li><b>Honesty layer</b> — ~110 inert controls each state what they would do on a live workspace, rather than failing silently — an unusually disciplined pattern that aids both users and maintainers.</li>
+  <li><b>Accessibility</b> — landmarks, a skip link, keyboard focus rings, ARIA on interactive widgets, reduced-motion support.</li>
+  <li><b>SEO</b> — native <code>robots.txt</code>, <code>sitemap.xml</code>, Open Graph image, and per-page metadata.</li>
+</ul>
+<p class="small">There is no automated test suite; verification to date has been type-checking, clean
+builds, and manual/functional checks. Adding tests around the engine (scoring, providers, db) is a
+reasonable early investment for the new owner.</p>
+</div>
+
+<div class="sec">
+<h2>14 · Known limitations &amp; notes for a new team</h2>
+<ul>
+  <li><b>Demo vs live data</b> — most dashboard numbers are the curated "Nike" fixture; they become
+    real once providers are connected and scoring is wired into the views (see <code>LAUNCH_ROADMAP.md</code>).</li>
+  <li><b>In-memory default</b> — without a storage key, data resets on serverless cold starts and is not
+    shared across instances. Set a Redis/KV key for durability.</li>
+  <li><b>Provider clients</b> — written against documented endpoints but not run against live keys;
+    verify each with a real key (the Integrations "Test connection" button exists for this).</li>
+  <li><b>Access gate</b> — the demo passphrase still governs <code>/app</code>; switching to real
+    account sessions is the documented last wiring step.</li>
+  <li><b>Dev-only quirk</b> — in local dev, server-rendered pages and API routes are separate module
+    graphs, so in-memory writes via an API route aren't visible to a page render; this disappears with a
+    durable store and in production.</li>
+  <li><b>Conversation / demand panel</b> — panel-grade conversation metrics require a licensed data
+    contract; until then they should be labeled "modeled / beta."</li>
+</ul>
+</div>
+
+<div class="sec">
+<h2>15 · Key-file reference</h2>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td>proxy.ts</td><td>Edge: AI-crawler capture + access gate</td></tr>
+  <tr><td>app/(dash)/app/layout.tsx</td><td>Dashboard shell + real session validation</td></tr>
+  <tr><td>lib/db/index.ts · entities.ts</td><td>Persistence store + typed tables</td></tr>
+  <tr><td>lib/auth/index.ts</td><td>scrypt auth + sessions</td></tr>
+  <tr><td>lib/scoring/index.ts</td><td>Answers → metrics</td></tr>
+  <tr><td>lib/sampler/run.ts · store.ts</td><td>Nightly run + answer store</td></tr>
+  <tr><td>lib/providers/*</td><td>Provider clients + registry</td></tr>
+  <tr><td>lib/telemetry/*</td><td>First-party crawler/referral capture</td></tr>
+  <tr><td>lib/metrics.ts</td><td>31-metric dictionary (definitions + formulas)</td></tr>
+  <tr><td>lib/export/report.ts</td><td>CSV report engine</td></tr>
+  <tr><td>HANDOFF.md</td><td>Step-by-step activation guide</td></tr>
+  <tr><td>INTEGRATIONS.md · METRICS.md</td><td>Integration plan · metric reference</td></tr>
+</table>
+<p class="small" style="margin-top:14pt; border-top:1px solid var(--line); padding-top:8pt;">
+This document accompanies the Answr platform for acquisition diligence. For the full feature
+inventory see PLATFORM_OVERVIEW.md; for activation steps see HANDOFF.md; for the assets transferring
+with the sale see the Assets &amp; IP schedule.</p>
+</div>
+
+</body></html>
