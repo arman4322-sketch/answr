@@ -3,6 +3,7 @@ import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
 import SettingsRail from "../SettingsRail";
 import TestButton from "./TestButton";
+import ScoringPreview from "./ScoringPreview";
 import { providerStatuses } from "@/lib/providers/registry";
 import { readKvEnv } from "@/lib/telemetry/kv";
 import { METRICS, type MetricId } from "@/lib/metrics";
@@ -103,6 +104,9 @@ export default function IntegrationsPage() {
               </div>
             </div>
           ))}
+
+          {/* Scoring engine — live proof it computes real metrics */}
+          <ScoringPreview />
 
           {/* Infrastructure readiness */}
           <div style={card}>
