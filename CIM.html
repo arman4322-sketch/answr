@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Answr — Confidential Information Memorandum</title>
+<style>
+  :root{ --ink:#1c2230; --mut:#545a6a; --faint:#8a90a0; --line:#e2e4ec; --accent:#5a4fd0;
+    --deep:#2a2440; --th:#eef0f7; --gold:#a8791f; --good:#1f9d6b; --amber:#b9791a; }
+  *{box-sizing:border-box}
+  @page{ size:Letter; margin:0.8in 0.75in; }
+  @page:first{ margin:0; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:Georgia,"Times New Roman",serif; color:var(--ink); font-size:10.5pt; line-height:1.55; margin:0; }
+  .sans{ font-family:"Helvetica Neue",Arial,sans-serif; }
+  h2,h3,h4{ font-family:"Helvetica Neue",Arial,sans-serif; }
+  h2{ font-size:14pt; color:var(--deep); margin:19pt 0 6pt; padding-bottom:4pt; border-bottom:2px solid var(--accent); font-weight:700; }
+  h2 .num{ color:var(--accent); }
+  h3{ font-size:11pt; color:#33384a; margin:11pt 0 3pt; font-weight:700; }
+  p{ margin:0 0 8pt; }
+  ul{ margin:0 0 9pt; padding-left:17px; } li{ margin:0 0 4pt; }
+  strong,b{ color:var(--deep); }
+  code{ font-family:Menlo,Consolas,monospace; font-size:8.6pt; background:#f4f4f8; padding:1px 4px; border-radius:3px; }
+  table{ border-collapse:collapse; width:100%; margin:7pt 0 11pt; font-size:9.2pt; font-family:"Helvetica Neue",Arial,sans-serif; }
+  th{ background:var(--th); text-align:left; padding:6px 9px; border:1px solid var(--line); font-weight:700; color:#33384a; }
+  td{ padding:6px 9px; border:1px solid var(--line); vertical-align:top; }
+  td:first-child{ font-weight:600; }
+  h2{ break-after:avoid; } table,.box,.kpis{ break-inside:avoid; }
+
+  .cover{ height:11in; background:linear-gradient(160deg,#1a1830 0%, #2a2440 55%, #3a2f66 100%); color:#fff;
+    display:flex; flex-direction:column; justify-content:space-between; padding:1in 0.9in; break-after:page; }
+  .cover .top{ display:flex; align-items:center; gap:12px; }
+  .cover .glyph{ width:44px;height:44px;border-radius:11px;background:#8e7cf2;color:#191627;display:flex;align-items:center;justify-content:center;font-family:"Helvetica Neue",Arial;font-weight:800;font-size:26px; }
+  .cover .brand{ font-family:"Helvetica Neue",Arial; font-size:22px; font-weight:700; letter-spacing:.5px; }
+  .cover .conf{ font-family:"Helvetica Neue",Arial; font-size:9pt; letter-spacing:3px; text-transform:uppercase; color:#b9b2e6; }
+  .cover .mid .doc{ font-family:"Helvetica Neue",Arial; font-size:15pt; font-weight:500; color:#cfc9f0; letter-spacing:.5px; }
+  .cover .mid h1{ font-family:"Helvetica Neue",Arial; font-size:40pt; font-weight:800; line-height:1.05; letter-spacing:-1pt; margin:8pt 0 10pt; }
+  .cover .mid .tag{ font-size:12pt; color:#cfc9f0; margin-top:12pt; max-width:6in; font-family:Georgia,serif; font-style:italic; }
+  .cover .foot{ font-family:"Helvetica Neue",Arial; font-size:9.5pt; color:#a9a3d0; line-height:1.7; }
+  .cover .foot b{ color:#fff; }
+
+  .lead{ font-size:11.5pt; color:var(--mut); }
+  .box{ border:1px solid var(--line); border-radius:8px; padding:11px 15px; margin:8pt 0; background:#fbfbfd; }
+  .box.accent{ border-left:4px solid var(--accent); }
+  .box.gold{ border-left:4px solid var(--gold); background:#fdfaf3; }
+  .box.amber{ border-left:4px solid var(--amber); background:#fdf7ee; }
+  .kpis{ display:flex; gap:10px; margin:8pt 0 12pt; }
+  .kpi{ flex:1; border:1px solid var(--line); border-radius:8px; padding:10px 12px; text-align:center; background:#fbfbfd; }
+  .kpi .n{ font-family:"Helvetica Neue",Arial; font-size:16pt; font-weight:800; color:var(--accent); letter-spacing:-.5pt; }
+  .kpi .l{ font-family:"Helvetica Neue",Arial; font-size:7.8pt; color:var(--mut); line-height:1.3; margin-top:2px; }
+  .small{ font-size:8.8pt; color:var(--mut); }
+  .disclaimer{ font-size:8.7pt; color:var(--mut); line-height:1.5; }
+  .disclaimer p{ margin-bottom:6pt; }
+  .highlight{ display:flex; gap:10px; margin-bottom:7pt; }
+  .highlight .no{ flex:none; width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;font-family:"Helvetica Neue",Arial;font-weight:700;font-size:10pt;display:flex;align-items:center;justify-content:center; }
+  .toc-line{ display:flex; justify-content:space-between; font-family:"Helvetica Neue",Arial; font-size:9.3pt; padding:3pt 0; border-bottom:1px dotted var(--line); }
+  .pill{ display:inline-block; font-size:7.6pt; font-weight:700; padding:1px 6px; border-radius:8px; }
+  .p-real{ background:#e5f4ec; color:var(--good); } .p-demo{ background:#faf0d8; color:var(--amber); }
+  .p-key{ background:#eef1fb; color:var(--accent); } .p-build{ background:#f3eef6; color:#7a4f9c; }
+  .placeholder{ background:#fffbe8; border:1px dashed #d9c96a; border-radius:5px; padding:1px 6px; font-family:"Helvetica Neue",Arial; font-size:8.5pt; color:#8a6d1a; }
+</style></head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="top">
+    <div class="glyph">A</div><div class="brand">Answr</div>
+    <div style="margin-left:auto" class="conf">Strictly Private &amp; Confidential</div>
+  </div>
+  <div class="mid">
+    <div class="doc sans">Confidential Information Memorandum</div>
+    <h1>An answer-engine<br>optimization platform.</h1>
+    <div class="tag">A built, deployed AEO analytics platform — offered for acquisition as an asset and a head start in one of software's fastest-emerging categories.</div>
+  </div>
+  <div class="foot">
+    <b>Prepared:</b> August 2026 &nbsp;·&nbsp; <b>Domain:</b> useanswr.com &nbsp;·&nbsp; <b>Stack:</b> Next.js 16 · React 19 · TypeScript<br>
+    This memorandum is confidential and intended only for the recipient. See the confidentiality notice within.
+  </div>
+</div>
+
+<!-- 1 -->
+<div class="sec">
+<h2><span class="num">1.</span> Confidentiality notice &amp; disclaimer</h2>
+<div class="disclaimer">
+<p>This Confidential Information Memorandum (the "Memorandum") has been prepared by the owner of Answr
+(the "Seller") solely to assist the recipient in evaluating a possible acquisition of the Answr
+platform and related assets (the "Business"). It is provided on a strictly confidential basis. By
+accepting it, the recipient agrees to keep its contents confidential, to use it only to evaluate the
+potential transaction, and to return or destroy it on request.</p>
+<p>This Memorandum does not constitute an offer to sell or a solicitation of an offer to buy, and does
+not form the basis of any contract. The information reflects the Seller's good-faith description of the
+Business as of the preparation date; it has not been independently audited. <strong>The dashboard
+figures, metrics, and any data shown in the product are illustrative demonstration data on a curated
+sample workspace — they are not indicative of any actual usage, traffic, customers, or revenue, of
+which there are none.</strong> Statements about markets, categories, timelines, costs, pricing, and
+potential are illustrative and forward-looking, and actual results may differ materially.</p>
+<p>The Seller makes no representation or warranty, express or implied, as to the accuracy or
+completeness of the information, which will be superseded by the representations in any definitive
+purchase agreement. Each recipient should conduct its own independent investigation and rely on its
+own advisors. Nothing herein is legal, financial, tax, or investment advice.</p>
+</div>
+</div>
+
+<!-- 2 -->
+<div class="sec">
+<h2><span class="num">2.</span> Executive summary</h2>
+<p class="lead">Answr is a complete, deployed platform for <strong>Answer Engine Optimization (AEO)</strong> —
+the emerging discipline of measuring and improving how a brand appears in AI-assistant answers. It is
+offered for acquisition as an asset: the product, brand, and domain are built and live; a new owner
+supplies API keys and a storage credential, completes a short remaining build, and takes it to market.</p>
+<div class="kpis">
+  <div class="kpi"><div class="n">Live</div><div class="l">deployed on Vercel at useanswr.com</div></div>
+  <div class="kpi"><div class="n">Real</div><div class="l">first-party AI-crawler pipeline works today</div></div>
+  <div class="kpi"><div class="n">Engine</div><div class="l">auth, scoring, integrations — built</div></div>
+  <div class="kpi"><div class="n">Asset</div><div class="l">pre-revenue; offered on an asset basis</div></div>
+</div>
+<p>Buyers increasingly ask ChatGPT, Claude, Gemini, Perplexity, and Google's AI Overviews instead of
+clicking search results, and brands have little visibility into what those assistants say about them or
+which sources they cite. Answr addresses exactly this: it monitors AI answers, traces their citations,
+tracks AI crawlers hitting a brand's site, and turns gaps into a prioritized action queue.</p>
+
+<h3>What is real, what is demonstration, and what remains — at a glance</h3>
+<p class="small">The single most important thing for a buyer to understand. Stated plainly and cross-referenced throughout:</p>
+<table>
+  <tr><th style="width:24%">Status</th><th>What it covers</th></tr>
+  <tr><td><span class="pill p-real">Real now</span></td><td>The marketing site and dashboard experience; the export/reporting and filtering engines; and — most notably — the first-party AI-crawler telemetry pipeline, which genuinely captures AI bots on the deployment it runs on.</td></tr>
+  <tr><td><span class="pill p-demo">Demo data</span></td><td>Most dashboard analytics run on a curated sample ("Nike") workspace so the full product is demonstrable. The mechanisms are real; the numbers are illustrative until real data flows in.</td></tr>
+  <tr><td><span class="pill p-key">Activates with keys</span></td><td>The provider integrations, durable storage, and nightly sampler are written and wired; they turn on when the buyer adds API keys and a storage credential.</td></tr>
+  <tr><td><span class="pill p-build">Requires a short build</span></td><td>Two value steps are engineering, not configuration: feeding the scoring engine's output into the dashboards (so numbers become real per customer), and multi-tenant isolation for serving many customers.</td></tr>
+</table>
+<p>The Business is offered as an <strong>asset sale</strong> — the fastest, lowest-risk way for an
+operator to enter the AEO category with months of engineering, design, and category work already
+completed. Offers are invited (see §13).</p>
+</div>
+
+<!-- 3 -->
+<div class="sec">
+<h2><span class="num">3.</span> Acquisition highlights</h2>
+<div class="highlight"><div class="no">1</div><div class="tx"><b>A working first-party data pipeline.</b> The AI-crawler telemetry capture — detecting bots that never execute JavaScript — is genuinely built and functioning on the deployment. This is the technically hardest, most defensible primitive in the category, and it exists today (as working plumbing; it is not yet a dataset of accumulated traffic).</div></div>
+<div class="highlight"><div class="no">2</div><div class="tx"><b>A real backend engine, built to activate.</b> Persistence, scrypt authentication, an answer-scoring engine with documented formulas, and hand-written provider integration clients — written and wired, turning on with credentials rather than needing to be created.</div></div>
+<div class="highlight"><div class="no">3</div><div class="tx"><b>A complete, polished product surface.</b> A full marketing site, a 36-screen analytics dashboard, and account/onboarding flows — type-clean and building cleanly, with an unusually disciplined "honesty layer" that labels demonstration-only controls.</div></div>
+<div class="highlight"><div class="no">4</div><div class="tx"><b>A clean, brandable, self-contained asset.</b> The useanswr.com domain, a complete visual identity and design system, and original content built on permissively licensed open-source (evidence for diligence in the data room).</div></div>
+<div class="highlight"><div class="no">5</div><div class="tx"><b>A timely category and a build-vs-buy shortcut.</b> AEO / GEO is early and funded (peers have raised capital), validating the market; this asset lets an operator enter it with a deployed platform rather than a multi-month build.</div></div>
+</div>
+
+<!-- 4 -->
+<div class="sec">
+<h2><span class="num">4.</span> Rationale for sale</h2>
+<p>Answr was built to the point of a complete, deployed, demonstrable platform. Taking it from here to a
+live, growing business is primarily a go-to-market and operating job — a different undertaking, and a
+different skill set, than building it. The Seller is offering the Business so that an operator better
+positioned to launch and grow it can do so, rather than have a finished platform sit idle.</p>
+<div class="box"><p style="margin:0" class="small"><span class="placeholder">Seller to personalize</span> &nbsp; The Seller may add a
+brief, specific note here (e.g. focus, time, or opportunity-cost considerations). A candid, concrete
+rationale materially strengthens buyer confidence.</p></div>
+</div>
+
+<!-- 5 -->
+<div class="sec">
+<h2><span class="num">5.</span> The opportunity</h2>
+<p>A growing share of product research, comparison, and recommendation now happens inside AI assistants
+rather than a traditional results page. When a buyer asks an assistant to "recommend a tool like X" or
+"compare the best options," it returns a synthesized answer and cites a handful of sources — and most
+brands cannot see whether they appear, how they are described, or which sources shape the answer.</p>
+<p><strong>Answer Engine Optimization (AEO)</strong> — also called Generative Engine Optimization
+(GEO) — is the emerging practice of measuring and improving that presence. It is to AI assistants what
+SEO was to search engines, and it is early: the tooling category is nascent, and search-visibility
+budgets are beginning to move toward AI-answer visibility.</p>
+<div class="box accent"><p style="margin:0"><strong>Why now.</strong> The measurement problem is real, unsolved for most brands, and
+growing with AI-assistant usage. A platform that already measures AI-answer visibility, citations, and
+crawler activity is positioned for exactly this shift.</p></div>
+<p class="small">Market characterizations here are qualitative and illustrative; no specific market-size
+figures are asserted. A buyer should form its own view of category size and timing.</p>
+</div>
+
+<!-- 6 -->
+<div class="sec">
+<h2><span class="num">6.</span> Product overview</h2>
+<p>Answr spans four capabilities a brand needs to manage its presence in AI answers:</p>
+<table>
+  <tr><th>Capability</th><th>What it does</th></tr>
+  <tr><td>Answer Engine Insights</td><td>Measures visibility and share of voice across ChatGPT, Claude, Gemini, Perplexity, and AI Overviews — by topic, platform, region, and audience.</td></tr>
+  <tr><td>Citations</td><td>Traces the sources behind AI answers — which domains and pages get cited, owned vs. earned, and what's newly cited.</td></tr>
+  <tr><td>Agent Analytics</td><td>Tracks AI crawlers hitting the brand's site (first-party capture), plus AI-referred visits.</td></tr>
+  <tr><td>Actions &amp; Workflows</td><td>Turns visibility gaps into a prioritized, impact-scored action queue, with reporting and exports.</td></tr>
+</table>
+<p>Delivered through a marketing site (31 pages), a 36-screen analytics dashboard, and account/
+onboarding flows, backed by a documented metric model. A full feature inventory is in the data room.</p>
+</div>
+
+<!-- 7 -->
+<div class="sec">
+<h2><span class="num">7.</span> Technology &amp; intellectual property</h2>
+<p><strong>Next.js 16, React 19, TypeScript</strong>, deployed on Vercel with GitHub auto-deploy.
+Type-clean and building cleanly, with a deliberately small dependency footprint. Accurate technical
+description of the engine:</p>
+<ul>
+  <li><strong>Persistence</strong> — a backend-agnostic data layer running in-memory today; the implemented durable backend is <strong>Redis/KV</strong> (Upstash / Vercel), which activates with a credential. A Postgres backend is a straightforward adapter against the same interface, and is not yet implemented.</li>
+  <li><strong>Authentication</strong> — a bespoke account system (scrypt password hashing, sessions). It is built and functional but has <strong>no automated test coverage and no independent security review</strong>; hardening (rate limiting, lockout, CSRF, session hardening) remains.</li>
+  <li><strong>Scoring</strong> — real functions that turn sampled AI answers into the platform's metrics using a documented formula set.</li>
+  <li><strong>Provider integrations</strong> — hand-written clients for Perplexity, OpenAI, Anthropic, Gemini, and DataForSEO, written to each provider's documented API but <strong>not yet run against live endpoints</strong>; verify with live keys during diligence.</li>
+  <li><strong>Telemetry</strong> — the genuinely functional first-party AI-crawler and referral capture; per-customer deployment uses a proxy/snippet install.</li>
+</ul>
+<p>There is <strong>no automated test suite yet</strong> — verification to date is type-checking, clean
+builds, and manual/functional checks. The acquisition transfers full ownership of the original source,
+the Answr brand and <code>useanswr.com</code> domain, the design system and design canvases, all
+original content and the metric model, the demo dataset, and the documentation set (schedule in §13/§14).</p>
+</div>
+
+<!-- 8 -->
+<div class="sec">
+<h2><span class="num">8.</span> Current status &amp; what's built</h2>
+<p>The platform is deployed and operable as a demonstration. Restating the four-way status from §2 with
+the honest boundary between configuration and remaining engineering:</p>
+<ul>
+  <li><span class="pill p-real">Real now</span> &nbsp; Marketing site, dashboard experience, export/reporting and filtering engines, and the first-party telemetry pipeline.</li>
+  <li><span class="pill p-demo">Demo data</span> &nbsp; Most dashboard analytics run on a curated sample workspace; real mechanisms, illustrative numbers.</li>
+  <li><span class="pill p-key">Activates with keys</span> &nbsp; Provider connectivity, durable storage, and the nightly sampler — configuration.</li>
+  <li><span class="pill p-build">Requires a short build</span> &nbsp; Wiring scored output into the dashboards, and multi-tenant isolation — engineering, not configuration. The current build is effectively single-workspace.</li>
+</ul>
+<div class="box gold"><p style="margin:0"><strong>Pre-revenue and pre-launch.</strong> There are no customers or revenue today, and no
+customer data or associated liability. The value is the built asset and the time-to-market it buys. The
+buyer's remaining work is activation plus the short build above — detailed in the launch roadmap in the
+data room — not a rebuild.</p></div>
+</div>
+
+<!-- 9 -->
+<div class="sec">
+<h2><span class="num">9.</span> Business model</h2>
+<p>Answr is designed as a subscription SaaS with tiered pricing already built into the product:</p>
+<table>
+  <tr><th>Tier</th><th>Positioning</th></tr>
+  <tr><td>Growth</td><td>Entry tier for a single brand — core visibility, citations, and actions.</td></tr>
+  <tr><td>Scale</td><td>The primary tier — more prompts, platforms, workflows, and API/MCP access.</td></tr>
+  <tr><td>Enterprise</td><td>Multi-brand, SSO/SAML, data residency, white-label, priority support (designed; not yet built).</td></tr>
+</table>
+<p>The model is recurring, with a designed agency/reseller motion (pooled quota, white-label reporting)
+for higher-leverage distribution. <strong>Pricing is an intended framework, not validated economics.</strong>
+Cost of goods is primarily usage-based provider-API spend that scales with how many prompts × platforms
+are sampled per customer; a buyer should model per-customer API and infrastructure cost against these
+tiers to assess gross margin. The Business is <strong>pre-revenue</strong>.</p>
+</div>
+
+<!-- 10 -->
+<div class="sec">
+<h2><span class="num">10.</span> Competitive landscape</h2>
+<p>The AEO/GEO category is young and active. Dedicated entrants include <strong>Profound</strong> and
+<strong>Peec AI</strong>, with others (e.g. Otterly, Goodie, Scrunch/Athena-class tools) emerging. Two
+structural threats a buyer should weigh: <strong>SEO incumbents</strong> (e.g. Semrush, Ahrefs) adding
+AEO features to large existing user bases, and the <strong>AI providers themselves</strong> potentially
+surfacing native analytics.</p>
+<p>That several players have raised capital is itself category validation. Answr's position is a
+<strong>build-vs-buy shortcut</strong>: a deployed, full-stack platform (visibility, citations,
+first-party crawler analytics, and an action layer) with the hardest primitive — first-party capture —
+already working. A buyer should assess where Answr is at parity or behind funded competitors, not only
+where it may have an edge.</p>
+</div>
+
+<!-- 11 -->
+<div class="sec">
+<h2><span class="num">11.</span> Growth &amp; upside</h2>
+<p>Qualitative expansion vectors the built engine already supports (illustrative optionality, not
+projections or commitments):</p>
+<ul>
+  <li><strong>Category tailwind</strong> — value grows with AI-assistant adoption and the budget shift toward AI-answer visibility.</li>
+  <li><strong>Channel leverage</strong> — the built-in agency/reseller model can extend reach across many end brands through one relationship.</li>
+  <li><strong>Product expansion</strong> — additional platforms, deeper citation and sentiment analysis, and a licensed conversation-data panel are natural extensions of the existing architecture.</li>
+  <li><strong>Enterprise segment</strong> — the enterprise feature set is designed and can be built out to open a higher-value tier as the product matures.</li>
+</ul>
+</div>
+
+<!-- 12 -->
+<div class="sec">
+<h2><span class="num">12.</span> Key considerations</h2>
+<p>Stated plainly, because the asset's credibility rests on candor. A buyer should weigh:</p>
+<table>
+  <tr><th style="width:34%">Consideration</th><th>Detail</th></tr>
+  <tr><td>Pre-revenue, unproven demand</td><td>No customers or revenue; market demand and pricing are unvalidated.</td></tr>
+  <tr><td>Remaining work to launch</td><td>Activation (keys, storage) plus a short build (scoring→dashboards, multi-tenant) before it serves paying customers.</td></tr>
+  <tr><td>Third-party provider dependency</td><td>Core measurement depends on external LLM/SERP providers whose pricing, limits, availability, and terms can change; querying AI Overviews via SERP data is an industry-standard but ToS-sensitive area. Provider clients need live verification.</td></tr>
+  <tr><td>Untested at volume</td><td>The full system has not run end-to-end at production volume; integration behavior and auth hardening are unexercised.</td></tr>
+  <tr><td>Single-tenant today</td><td>Multi-customer isolation, per-customer key management, SSO/SAML, and residency remain to be built.</td></tr>
+  <tr><td>Founder-transfer risk</td><td>Solo-built; mitigated by an extensive documentation set and an offered handover (§13).</td></tr>
+  <tr><td>Competitive risk</td><td>Funded specialists and SEO incumbents are active in the category.</td></tr>
+</table>
+</div>
+
+<!-- 13 -->
+<div class="sec">
+<h2><span class="num">13.</span> The transaction</h2>
+<h3>Structure &amp; assets included</h3>
+<p>Offered as an <strong>asset sale</strong>. The transaction conveys:</p>
+<ul>
+  <li>The complete source code and repository, with full ownership and rights.</li>
+  <li>The <code>useanswr.com</code> domain and the Answr brand, name, logo, and visual identity.</li>
+  <li>The design system and original design canvases; all original content and the 31-metric model.</li>
+  <li>The first-party telemetry pipeline and the demo dataset.</li>
+  <li>The full documentation set (feature inventory, technical documentation, launch roadmap, activation guide, assets/IP schedule).</li>
+</ul>
+<p><strong>Excluded / buyer-provided:</strong> the Seller's own third-party accounts and API keys, and
+any real customer data (none exists). A detailed assets/IP schedule is in the data room.</p>
+
+<h3>Value basis</h3>
+<p>As a pre-revenue asset, the Business is offered on an <strong>asset basis</strong> (not an earnings
+multiple), and <strong>offers are invited</strong>. Rational value frames are replacement cost — the
+engineering, design, and category work embodied in a deployed platform with a working first-party
+pipeline — and strategic/option value to an operator already positioned in or adjacent to the category.
+Value drivers: build completeness, the working pipeline, the brand and clean-IP domain, and category
+timing.</p>
+
+<h3>Transition &amp; support</h3>
+<div class="box accent"><p style="margin:0">The Seller can provide a defined post-close <strong>handover</strong> to help a buyer stand the
+platform up — activation and runbook support to connect keys and storage, a walkthrough of the
+architecture and data model, and a support window (scope and duration by agreement). A structured
+transition plan accompanies this Memorandum.</p></div>
+
+<h3>Process</h3>
+<p>Interested parties are invited to (1) review this Memorandum and the data-room materials;
+(2) evaluate the live product via a guided walkthrough and, on request, a keyed diligence instance;
+(3) conduct technical diligence against the repository and documentation; and (4) submit an indicative
+offer (range, structure, and any contingencies). <span class="placeholder">Seller to set</span> a
+submission timeline and preferred contact.</p>
+</div>
+
+<!-- 14 -->
+<div class="sec">
+<h2><span class="num">14.</span> Data room &amp; diligence index</h2>
+<p>The following accompany this Memorandum and are available to qualified parties:</p>
+<div class="toc-line"><span>Platform feature inventory — every feature, with technical depth</span><span>PLATFORM_OVERVIEW</span></div>
+<div class="toc-line"><span>Technical documentation — architecture, engine, APIs, deploy</span><span>TECHNICAL DOC (PDF)</span></div>
+<div class="toc-line"><span>Launch roadmap — what remains to activate and launch</span><span>LAUNCH_ROADMAP</span></div>
+<div class="toc-line"><span>Assets &amp; IP schedule — everything transferring, with encumbrances</span><span>ASSETS &amp; IP</span></div>
+<div class="toc-line"><span>Activation guide — step-by-step to turn the platform on</span><span>HANDOFF</span></div>
+<div class="toc-line"><span>Transition / handover plan</span><span>HANDOVER PLAN</span></div>
+<div class="toc-line"><span>Integration &amp; metric references</span><span>INTEGRATIONS · METRICS</span></div>
+<p class="small" style="margin-top:8pt"><strong>Recommended additional diligence artifacts</strong> (to be provided/confirmed):
+repository access; a dependency license report (SBOM) evidencing no copyleft/commercial-license
+conflicts; confirmation of sole authorship and IP assignment, including AI-assisted code provenance;
+trademark and domain clearance for the "Answr" name; and a reproducible clean-build log.</p>
+<p class="small" style="margin-top:12pt; padding-top:8pt; border-top:2px solid var(--accent);">
+<strong>Contact.</strong> Enquiries and offers regarding this opportunity should be directed to the
+Seller. This Memorandum is confidential and provided subject to the notice in §1.</p>
+</div>
+
+</body></html>
