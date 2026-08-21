@@ -21,7 +21,12 @@
   th{ background:var(--th); text-align:left; padding:6px 9px; border:1px solid var(--line); font-weight:700; color:#33384a; }
   td{ padding:6px 9px; border:1px solid var(--line); vertical-align:top; }
   td:first-child{ font-weight:600; }
-  h2{ break-after:avoid; } table,.box,.kpis{ break-inside:avoid; }
+  h2,h3{ break-after:avoid; } table,.box,.kpis{ break-inside:avoid; }
+  /* Keep each numbered section together on one page where it fits; a section
+     taller than a page still breaks, but never leaves a heading + a few lines
+     stranded at a page bottom. */
+  .keep{ break-inside:avoid; }
+  p,li{ orphans:2; widows:2; }
 
   .cover{ height:11in; background:linear-gradient(160deg,#1a1830 0%, #2a2440 55%, #3a2f66 100%); color:#fff;
     display:flex; flex-direction:column; justify-content:space-between; padding:1in 0.9in; break-after:page; }
@@ -130,7 +135,7 @@ completed. Offers are invited (see §13).</p>
 </div>
 
 <!-- 3 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">3.</span> Acquisition highlights</h2>
 <div class="highlight"><div class="no">1</div><div class="tx"><b>A working first-party data pipeline.</b> The AI-crawler telemetry capture — detecting bots that never execute JavaScript — is genuinely built and functioning on the deployment. This is the technically hardest, most defensible primitive in the category, and it exists today (as working plumbing; it is not yet a dataset of accumulated traffic).</div></div>
 <div class="highlight"><div class="no">2</div><div class="tx"><b>A real backend engine, built to activate.</b> Persistence, scrypt authentication, an answer-scoring engine with documented formulas, and hand-written provider integration clients — written and wired, turning on with credentials rather than needing to be created.</div></div>
@@ -140,19 +145,16 @@ completed. Offers are invited (see §13).</p>
 </div>
 
 <!-- 4 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">4.</span> Rationale for sale</h2>
 <p>Answr was built to the point of a complete, deployed, demonstrable platform. Taking it from here to a
 live, growing business is primarily a go-to-market and operating job — a different undertaking, and a
 different skill set, than building it. The Seller is offering the Business so that an operator better
 positioned to launch and grow it can do so, rather than have a finished platform sit idle.</p>
-<div class="box"><p style="margin:0" class="small"><span class="placeholder">Seller to personalize</span> &nbsp; The Seller may add a
-brief, specific note here (e.g. focus, time, or opportunity-cost considerations). A candid, concrete
-rationale materially strengthens buyer confidence.</p></div>
 </div>
 
 <!-- 5 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">5.</span> The opportunity</h2>
 <p>A growing share of product research, comparison, and recommendation now happens inside AI assistants
 rather than a traditional results page. When a buyer asks an assistant to "recommend a tool like X" or
@@ -170,7 +172,7 @@ figures are asserted. A buyer should form its own view of category size and timi
 </div>
 
 <!-- 6 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">6.</span> Product overview</h2>
 <p>Answr spans four capabilities a brand needs to manage its presence in AI answers:</p>
 <table>
@@ -204,7 +206,7 @@ original content and the metric model, the demo dataset, and the documentation s
 </div>
 
 <!-- 8 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">8.</span> Current status &amp; what's built</h2>
 <p>The platform is deployed and operable as a demonstration. Restating the four-way status from §2 with
 the honest boundary between configuration and remaining engineering:</p>
@@ -221,7 +223,7 @@ data room — not a rebuild.</p></div>
 </div>
 
 <!-- 9 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">9.</span> Business model</h2>
 <p>Answr is designed as a subscription SaaS with tiered pricing already built into the product:</p>
 <table>
@@ -238,7 +240,7 @@ tiers to assess gross margin. The Business is <strong>pre-revenue</strong>.</p>
 </div>
 
 <!-- 10 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">10.</span> Competitive landscape</h2>
 <p>The AEO/GEO category is young and active. Dedicated entrants include <strong>Profound</strong> and
 <strong>Peec AI</strong>, with others (e.g. Otterly, Goodie, Scrunch/Athena-class tools) emerging. Two
@@ -253,7 +255,7 @@ where it may have an edge.</p>
 </div>
 
 <!-- 11 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">11.</span> Growth &amp; upside</h2>
 <p>Qualitative expansion vectors the built engine already supports (illustrative optionality, not
 projections or commitments):</p>
@@ -266,7 +268,7 @@ projections or commitments):</p>
 </div>
 
 <!-- 12 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">12.</span> Key considerations</h2>
 <p>Stated plainly, because the asset's credibility rests on candor. A buyer should weigh:</p>
 <table>
@@ -314,12 +316,12 @@ transition plan accompanies this Memorandum.</p></div>
 <p>Interested parties are invited to (1) review this Memorandum and the data-room materials;
 (2) evaluate the live product via a guided walkthrough and, on request, a keyed diligence instance;
 (3) conduct technical diligence against the repository and documentation; and (4) submit an indicative
-offer (range, structure, and any contingencies). <span class="placeholder">Seller to set</span> a
-submission timeline and preferred contact.</p>
+offer (range, structure, and any contingencies). A submission timeline and preferred point of
+contact are available from the Seller on request.</p>
 </div>
 
 <!-- 14 -->
-<div class="sec">
+<div class="sec keep">
 <h2><span class="num">14.</span> Data room &amp; diligence index</h2>
 <p>The following accompany this Memorandum and are available to qualified parties:</p>
 <div class="toc-line"><span>Platform feature inventory — every feature, with technical depth</span><span>PLATFORM_OVERVIEW</span></div>
