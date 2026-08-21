@@ -113,7 +113,7 @@ export default function SignupForm() {
           <input id="signup-password" name="password" type="password" placeholder="8+ characters" autoComplete="new-password" style={fieldInput} />
           <button type="submit" className="btn-ac" style={{display:"block",width:"100%",textAlign:"center",fontSize:"13px",fontWeight:"600",borderRadius:"8px",padding:"11px 0",marginTop:"20px",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{"Create account"}</button>
         </form>
-        <div style={{fontSize:"11.5px",color:"var(--fnt)",marginTop:"14px",textAlign:"center",lineHeight:"1.5"}}>{"By signing up you agree to the "}<Link href="/security">{"Terms"}</Link>{" and "}<Link href="/security">{"Privacy Policy"}</Link>{"."}</div>
+        <div style={{fontSize:"11.5px",color:"var(--fnt)",marginTop:"14px",textAlign:"center",lineHeight:"1.5"}}>{"By signing up you agree to the "}<Link href="/terms">{"Terms"}</Link>{" and "}<Link href="/privacy">{"Privacy Policy"}</Link>{"."}</div>
       </div>
     </div>
   );

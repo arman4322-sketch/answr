@@ -3,8 +3,8 @@ import Link from "next/link";
 /* Shared marketing footer — canonical 4-column structure from the canvas, with audit
    fixes: the stray nav-caret on the Company→Industries link is removed (F3a), and the
    per-frame "Next: …" prototype furniture is replaced by the home frame's compliance
-   line. Privacy/Terms remain non-links by design intent (legal pages are in the
-   handoff's not-built gap list). */
+   line. Privacy/Terms/DPA now link to the real starter legal pages (/privacy, /terms,
+   /dpa) added in the sale-readiness pass. */
 
 const COLS: { title: string; items: { label: string; href?: string }[] }[] = [
   {
@@ -41,9 +41,9 @@ const COLS: { title: string; items: { label: string; href?: string }[] }[] = [
   {
     title: "Legal",
     items: [
-      { label: "Privacy" },
-      { label: "Terms" },
-      { label: "DPA", href: "/security" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "DPA", href: "/dpa" },
       { label: "Security", href: "/security" },
     ],
   },

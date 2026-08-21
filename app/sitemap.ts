@@ -33,6 +33,9 @@ const ROUTES: string[] = [
   "/industries/travel",
   "/resources/aeo-handbook",
   "/resources/answr-index",
+  "/privacy",
+  "/terms",
+  "/dpa",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
