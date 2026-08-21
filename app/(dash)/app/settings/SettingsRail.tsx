@@ -14,6 +14,7 @@ const ITEMS: { label: string; href?: string }[] = [
   { label: "Data quality", href: "/app/settings/data-quality" },
   { label: "Platforms", href: "/app/settings/platforms" },
   { label: "Integrations", href: "/app/settings/integrations" },
+  { label: "Leads", href: "/app/settings/leads" },
   { label: "Team", href: "/app/settings/team" },
   { label: "Notifications", href: "/app/settings/alerts" },
   { label: "API keys", href: "/app/settings/api-keys" },

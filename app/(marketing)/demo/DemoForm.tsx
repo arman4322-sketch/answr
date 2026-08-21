@@ -30,6 +30,11 @@ export default function DemoForm() {
       setInvalid(true);
       return;
     }
+    void fetch("/api/lead", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: "demo", email: email.trim(), company: website.trim() }),
+    }).catch(() => {});
     setBooked(true);
   }
 

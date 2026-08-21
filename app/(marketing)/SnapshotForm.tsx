@@ -24,6 +24,12 @@ export default function SnapshotForm() {
       setInvalid(true);
       return;
     }
+    // Persist the interest (durable once storage is configured; captured either way).
+    void fetch("/api/lead", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: "snapshot", company: domain.trim() }),
+    }).catch(() => {});
     setSent(true);
   }
 
