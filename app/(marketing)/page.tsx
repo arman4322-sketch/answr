@@ -250,25 +250,6 @@ export default function HomePage() {
     { name: "Bell", file: "bell.svg", height: 26, icon: false, fallbackStyle: { fontSize: "18px", fontWeight: 700, letterSpacing: "-0.02em" } },
   ]}
 />
-<div style={{padding:"0 48px 40px",textAlign:"center"}}>
-<div style={{display:"flex",justifyContent:"center",gap:"14px",marginTop:"26px",flexWrap:"wrap"}}>
-<span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
-<span style={{color:"var(--ac)"}}>{"◆"}
-</span>
-<span style={{color:"var(--tx)",fontWeight:"600"}}>{"5 engines"}
-</span>{" — ChatGPT, Claude, Gemini, Perplexity, AI Overviews"}
-</span>
-<span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
-<span style={{width:"6px",height:"6px",borderRadius:"50%",background:"var(--ac)"}} />
-<span style={{color:"var(--tx)",fontWeight:"600"}}>{"Answer Engine Optimization"}
-</span>{" — visibility, citations & agents"}
-</span>
-<span style={{display:"inline-flex",alignItems:"center",gap:"8px",border:"1px solid var(--brd)",borderRadius:"7px",padding:"7px 14px",background:"var(--bg1)",fontSize:"11.5px",color:"var(--mut)"}}>
-<span style={{color:"var(--ac)"}}>{"✓"}
-</span>{" First-party data · no scraping"}
-</span>
-</div>
-</div>
 <div style={{borderTop:"1px solid var(--brd)",padding:"88px 48px",maxWidth:"1240px",margin:"0 auto"}}>
 <div style={{textAlign:"center",maxWidth:"640px",margin:"0 auto"}}>
 <div style={{display:"inline-block",fontSize:"10.5px",fontWeight:"600",letterSpacing:".14em",textTransform:"uppercase",color:"var(--ac)",border:"1px solid color-mix(in oklab,var(--ac) 32%,transparent)",background:"rgba(142,124,242,0.08)",borderRadius:"999px",padding:"6px 14px"}}>{"How it works"}
