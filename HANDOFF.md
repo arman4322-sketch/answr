@@ -45,6 +45,11 @@ These are committed on `main`:
   Settings › Integrations page (see §3).
 - **Build hygiene** — pinned Node (`engines` + `.nvmrc`).
 
+A follow-up pass (Aug 21) added: **real starter legal pages** (`/privacy`, `/terms`, `/dpa`)
+wired to the footer + signup consent; **working search** (Prompts + a real ⌘K command palette);
+a **coherent topic mix**; and the **engine** — persistence, auth, scoring, write paths, and
+lead capture (see §4).
+
 `next build` and `tsc --noEmit` are clean.
 
 ---
@@ -66,6 +71,10 @@ value-per-effort.
 | 7 | `ANTHROPIC_API_KEY` | Claude lane + Haiku sentiment. | <$1/mo pilot |
 | 8 | `OPENAI_API_KEY` | ChatGPT lane. | usage-based |
 | 9 | `CRON_SECRET` | Arms the nightly sampler (`vercel.json` cron → `/api/runs/execute`). Without it the sampler stays inert even though the cron is scheduled — deliberate, so it never spends unattended. | $0 |
+| 10 | `RESEND_API_KEY` + `LEAD_NOTIFY_EMAIL` (opt. `LEAD_FROM_EMAIL`) | Emails you when a lead is captured. Leads are stored regardless; this just adds notification. | Resend free tier |
+
+Optional model overrides (defaults are sensible): `PERPLEXITY_MODEL`, `GEMINI_MODEL`,
+`ANTHROPIC_MODEL`, `OPENAI_MODEL`, `DATAFORSEO_LOCATION`, `DATAFORSEO_LANGUAGE`.
 
 After 3–9: open **Settings › Integrations**, click **Test connection** on each provider to confirm
 the key works, then let the daily cron run (or `POST /api/runs/execute` with the bearer secret to
@@ -79,28 +88,43 @@ run it now). Sampled runs land in the answer store.
 
 ---
 
-## 4. Remaining engineering to be a fully live product (build — the real work)
+## 4. The engine — what's now BUILT, and what remains
 
-This is the "~5–7 months" part. None of it is blocked by the scaffolding — it plugs into it.
+The Aug-21 pass built the engine on a "works in-memory now, durable when you add a
+storage key" pattern (the same one the telemetry store uses). It is real, tested code
+that runs today with no accounts. Here's the status of each piece:
 
-1. **Persistence layer.** No database yet. Add Postgres (Neon/Supabase/Vercel) + an ORM
-   (Drizzle/Prisma). Minimum schema in `READINESS.md` §3 (blocker #1): `users`, `workspaces`,
-   `workspace_members`, `brands`, `prompts`, `prompt_runs`, `answers`, `citations`, `competitors`,
-   `watched_domains`, `platform_config`, `actions`. Port `lib/data/*` from constants to query
-   functions (keep the fixtures as seed data). The answer store (`lib/sampler/store.ts`) is a
-   landing zone; back it with (or migrate it into) this schema.
-2. **Authentication + multi-tenancy.** Today it's one shared passphrase (`lib/gate.ts`). Add a
-   real identity provider (Better Auth self-host is $0; Clerk/Auth0/WorkOS are managed) issuing an
-   httpOnly session; guard `/app/*` in `proxy.ts` (keep the bot branch ahead of it) **and** in the
-   dashboard layout. Thread a `workspace_id` through every query, resolved server-side from the
-   session — never from a client value.
-3. **Scoring.** Turn accumulated `prompt_runs` + `answers` into the 31 metrics using the formulas
-   already written verbatim in `lib/metrics.ts` (e.g. `visibility_score`, `share_of_voice`). This is
-   the step that replaces the fixtures on Overview/Insights/Citations with real numbers.
-4. **Prompt-set management + write paths.** Wire the existing modals (Add prompts, Create action,
-   team invites, etc.) to server actions that persist. The UI is built; the mutations are not.
-5. **Lead capture.** The demo/snapshot/signup forms don't send anything. Add an `/api/lead` route +
-   an email/CRM key (Resend free tier ~3k/mo; HubSpot free) so inbound leads are delivered/stored.
+**Built and working now (in-memory; durable the moment you set a KV key):**
+1. **Persistence layer** — `lib/db` is a generic document store (memory + Upstash/KV,
+   auto-selecting) with typed, tenant-scoped entities (`workspaces`, `users`, `sessions`,
+   `prompts`, `actions`, `leads`). Backend-agnostic: a Postgres implementation of the same
+   `Db` interface drops in without touching callers.
+2. **Authentication** — `lib/auth` is a complete account system: scrypt password hashing,
+   opaque sessions, `/api/auth/{signup,login,me,logout}`. Verified end-to-end.
+3. **Scoring** — `lib/scoring` turns sampled answers into the real metrics using the
+   `lib/metrics.ts` formulas (visibility, share of voice, citations, position). Demonstrable
+   at `/api/scoring/preview`.
+4. **Write paths** — Add Prompts and Create Action now persist (`/api/prompts`,
+   `/api/actions`); tracked prompts feed the sampler.
+5. **Lead capture** — `/api/lead` persists demo/snapshot submissions and shows them at
+   **Settings › Leads**; optional Resend email notification.
+
+**What remains to be fully production-live (the last mile):**
+1. **Add durable storage** — set a KV/Redis key so persistence survives restarts and is shared
+   across instances (§3). This is the single unlock that turns all of the above from
+   demo-grade into production-grade. (Optionally, implement the `Db` interface over Postgres.)
+2. **Make real sessions govern `/app`** — today the demo passphrase gate (`proxy.ts`) still
+   controls dashboard access, kept so the demo never breaks. Switch it to the real
+   `lib/auth` sessions via a JWT verifiable at the edge, or a node-runtime guard in the
+   dashboard layout. Thread each request's `workspaceId` from the session (the entities are
+   already workspace-scoped; the write paths currently use a single "demo" workspace).
+3. **Verify the provider clients with live keys** — `lib/providers/*` target documented
+   endpoints but weren't run against real keys; confirm each via Settings › Integrations →
+   Test connection, then let the sampler accumulate runs.
+4. **Feed scoring into the dashboards** — the scoring engine exists; the last step is
+   computing scores from accumulated runs and rendering them in place of the `lib/data/*`
+   fixtures on Overview/Insights/Citations.
+5. **A security review of the auth system** before relying on it in production.
 
 ---
 
@@ -133,10 +157,11 @@ real data anyway once §3–4 are done:
 - **Competitor set** — the dashboard tracks Adidas/Puma/Under Armour, but the (researched)
   Conversation Explorer cites Brooks/Asics/New Balance. Align them across the ~15 files carrying the
   names so the story is coherent.
-- **⌘K palette + Prompts search** — the search inputs look functional but don't filter; either wire
-  them to the existing arrays or make them honestly read-only, and drop the "typos still match" line.
-- **Soft social proof** — "2,400+ teams" (customers page) is unverified; replace with a real number
-  or soften before launch.
+- **Soft social proof** — "2,400+ teams" (customers page) is unverified; kept per owner direction —
+  replace with a real number before launch, or leave as-is.
+
+_(Done in the Aug-21 pass: ⌘K palette + Prompts search are now real; the topic prompt mix is
+re-derived so Running leads.)_
 
 ---
 
