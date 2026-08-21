@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import Hint from "@/components/ui/Hint";
 import { METRICS } from "@/lib/metrics";
@@ -67,6 +68,12 @@ export default function PromptsBody() {
   const [selected, setSelected] = useState<boolean[]>([true, true, true, false, false, false, false, false]);
   const [panelOpen, setPanelOpen] = useState(true);
 
+  const query = (useSearchParams().get("q") ?? "").trim().toLowerCase();
+  // Keep the original index so selection/detail logic stays stable while filtering.
+  const visible = PROMPT_ROWS.map((r, i) => ({ r, i })).filter(
+    ({ r }) => !query || r.prompt.toLowerCase().includes(query),
+  );
+
   const count = selected.filter(Boolean).length;
   const allSelected = selected.every(Boolean);
   const toggleAll = () => setSelected(PROMPT_ROWS.map(() => !allSelected));
@@ -95,7 +102,12 @@ export default function PromptsBody() {
           <span style={HEAD}>{"Visibility"}<Hint text={METRICS.visibility_score.plain} size={11} /></span>
           <span style={HEAD}>{"Position"}<Hint text={METRICS.avg_answer_position.plain} align="right" size={11} /></span>
         </div>
-        {PROMPT_ROWS.map((r, i) => (
+        {visible.length === 0 && (
+          <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--mut)", fontSize: "13px" }}>
+            {`No prompts match “${query}”. Clear the search to see all ${PROMPT_ROWS.length} loaded.`}
+          </div>
+        )}
+        {visible.map(({ r, i }) => (
           <div
             key={r.prompt}
             className="row-hover"
@@ -121,7 +133,7 @@ export default function PromptsBody() {
           <button type="button" onClick={exportSelection} style={{marginLeft:"auto",color:"var(--ac)",fontWeight:500,background:"none",border:"none",padding:0,fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Export selection"}</button>
         </div>
         <div style={{padding:"14px 20px",borderTop:"1px solid var(--brd)",fontSize:"11.5px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",display:"flex",justifyContent:"space-between"}}>
-          <span>{"Showing 8 of 412"}</span>
+          <span>{query ? `Showing ${visible.length} of ${PROMPT_ROWS.length} loaded` : "Showing 8 of 412"}</span>
           <span><PagerButton label="‹" />{" "}<span style={{color:"var(--tx)"}}>{"1"}</span>{" "}<PagerButton label="2" />{" "}<PagerButton label="3" />{" … "}<PagerButton label="52" />{" "}<PagerButton label="›" /></span>
         </div>
       </div>

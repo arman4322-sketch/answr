@@ -42,19 +42,19 @@ export const topicsSpec: ReportSpec = {
       label: "Strongest topic",
       value: "Running shoes — 42.6%",
       delta: "+6.2pt",
-      note: `${METRICS.topic_visibility.plain}. 64 prompts; Nike leads, best on ChatGPT.`,
+      note: `${METRICS.topic_visibility.plain}. 132 prompts; Nike leads, best on ChatGPT.`,
     },
     {
       label: "Weakest topic",
       value: "Basketball gear — 14.2%",
       delta: "-0.7pt",
-      note: "104 prompts and Puma leads them. The largest untapped prompt block after Sustainability.",
+      note: "40 prompts and Puma leads them — the smallest tracked topic block.",
     },
     {
       label: "Biggest decline",
       value: "Sustainability — 18.7%",
       delta: "-2.1pt",
-      note: "139 prompts — the biggest single topic — and Under Armour leads it on Claude. The highest-leverage gap on this screen.",
+      note: "48 prompts, and Under Armour leads it on Claude — a visibility gap worth closing.",
     },
     {
       label: METRICS.prompts_tracked.label,
@@ -77,11 +77,11 @@ export const topicsSpec: ReportSpec = {
       note: "Every tracked topic: prompt volume, share of voice, where the brand is strongest, and who leads.",
       columns: ["Topic", "Prompts", "Visibility", "Change vs previous", "Best platform", "Leading brand"],
       rows: [
-        ["Running shoes", "64", "42.6%", "+6.2", "ChatGPT", "Nike"],
-        ["Training apparel", "58", "38.1%", "+3.8", "ChatGPT", "Nike"],
-        ["Sneaker releases", "47", "29.4%", "+1.4", "Perplexity", "Adidas"],
-        ["Sustainability", "139", "18.7%", "-2.1", "Claude", "Under Armour"],
-        ["Basketball gear", "104", "14.2%", "-0.7", "Gemini", "Puma"],
+        ["Running shoes", "132", "42.6%", "+6.2", "ChatGPT", "Nike"],
+        ["Training apparel", "108", "38.1%", "+3.8", "ChatGPT", "Nike"],
+        ["Sneaker releases", "84", "29.4%", "+1.4", "Perplexity", "Adidas"],
+        ["Sustainability", "48", "18.7%", "-2.1", "Claude", "Under Armour"],
+        ["Basketball gear", "40", "14.2%", "-0.7", "Gemini", "Puma"],
       ],
     },
     {
@@ -360,7 +360,7 @@ export const runningShoesSpec: ReportSpec = {
   sections: [
     seriesSection("Topic visibility — daily trend", topicRunningShoesSeries, insightsDays, {
       unit: "%",
-      note: "Visibility across the topic's 64 prompts, by day.",
+      note: "Visibility across the topic's 132 prompts, by day.",
     }),
     {
       title: "Rank in topic",

@@ -15,11 +15,11 @@ import { toast } from "@/lib/toast";
 type Topic = { name: string; prompts: number };
 
 const topics: Topic[] = [
-  { name: "Running shoes", prompts: 64 },
-  { name: "Training apparel", prompts: 58 },
-  { name: "Sneaker releases", prompts: 47 },
-  { name: "Sustainability", prompts: 131 },
-  { name: "Basketball gear", prompts: 112 },
+  { name: "Running shoes", prompts: 132 },
+  { name: "Training apparel", prompts: 108 },
+  { name: "Sneaker releases", prompts: 84 },
+  { name: "Sustainability", prompts: 48 },
+  { name: "Basketball gear", prompts: 40 },
 ];
 
 const HIDDEN_FROM = 3; // rows 4–5 sit behind "+ 2 more topics"

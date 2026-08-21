@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Topbar from "@/components/app/Topbar";
 import FilterPill from "@/components/ui/FilterPill";
 import { ExportPromptsButton } from "./Controls";
 import AddPromptsModal from "./AddPromptsModal";
 import PromptsBody from "./PromptsBody";
+import PromptSearch from "./PromptSearch";
 import "./page.css";
 
 /* Prompts — converted from canvas frame #prompts. The frame's topbar controls
@@ -27,14 +29,14 @@ export default function PromptsPage() {
         exportLabel={null}
         extra={
           <>
-            <input type="search" aria-label="Search prompts" placeholder="⌕ Search 412 prompts…" style={{fontSize:"12px",fontWeight:400,fontVariantNumeric:"tabular-nums",color:"var(--tx)",background:"rgba(255,255,255,0.045)",border:"none",borderRadius:"7px",padding:"6px 12px",width:"200px",fontFamily:"inherit"}} />
+            <Suspense fallback={null}><PromptSearch /></Suspense>
             <FilterPill label="Intent: All" items={["Intent: All", "Intent: Commercial", "Intent: Informational", "Intent: Branded"]} note={DEMO_NOTE} />
             <ExportPromptsButton />
             <AddPromptsModal />
           </>
         }
       />
-      <PromptsBody />
+      <Suspense fallback={null}><PromptsBody /></Suspense>
     </div>
   );
 }

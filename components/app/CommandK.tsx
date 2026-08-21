@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { sourceMix, CITATIONS_TOTAL } from "@/lib/data/evidence";
@@ -10,18 +10,52 @@ import { useFilters } from "@/lib/filters/context";
 
 /* ⌘K command palette — from canvas frame #m-surfaces. Opens on Cmd/Ctrl+K anywhere
    and on the window CustomEvent "answr:cmdk" (dispatched by the Sidebar search
-   button); closes on Esc / backdrop click. Static command list from the frame.
-   Audit fix: "Export citations (11.4k)" → "Export citations (1,284)" to match the
-   Citations KPI. A "What's new" row is appended — it opens the WhatsNew panel via
-   the "answr:whatsnew" CustomEvent.
-   Every row executes (INTERACTIVITY_CONVENTIONS playbook 11): screen rows
-   router.push their target, "Export citations" downloads a real CSV built from
-   the citations fixture (lib/data/evidence.ts), and the palette closes after.
-   Export pass: the download was still named "solara-…" from the pre-Nike
-   workspace and shipped a bare table; it is now "nike-citations-source-mix-30d
-   .csv" in the shared executive envelope (lib/export/report.ts). */
+   button); closes on Esc / backdrop click.
+
+   Sale-readiness pass: the search box is now real. It filters a full index of
+   dashboard screens (case-insensitive, matches label or group) plus the palette
+   actions, with a genuine empty state — replacing the previously inert input and
+   the false "fuzzy — typos still match" footer. */
+
+type Screen = { label: string; group: string; href: string };
+
+const SCREENS: Screen[] = [
+  { label: "Overview", group: "Home", href: "/app/overview" },
+  { label: "Live telemetry", group: "Agents", href: "/app/live" },
+  { label: "Citations", group: "Monitor", href: "/app/citations" },
+  { label: "Watched URLs", group: "Citations", href: "/app/citations/watched" },
+  { label: "Prompts", group: "Monitor", href: "/app/prompts" },
+  { label: "Conversations", group: "Insights", href: "/app/conversations" },
+  { label: "Demand", group: "Insights", href: "/app/demand" },
+  { label: "Answer Engine Insights", group: "Insights", href: "/app/insights" },
+  { label: "Regions", group: "Insights", href: "/app/insights/regions" },
+  { label: "Audiences", group: "Insights", href: "/app/insights/audiences" },
+  { label: "Sentiment", group: "Insights", href: "/app/insights/sentiment" },
+  { label: "Shopping", group: "Insights", href: "/app/insights/shopping" },
+  { label: "Agent Analytics", group: "Agents", href: "/app/agents" },
+  { label: "Referrals", group: "Agents", href: "/app/agents/referrals" },
+  { label: "Crawler logs", group: "Agents", href: "/app/agents/logs" },
+  { label: "Actions", group: "Optimize", href: "/app/actions" },
+  { label: "Workflows", group: "Optimize", href: "/app/workflows" },
+  { label: "Reports", group: "Optimize", href: "/app/reports" },
+  { label: "Assets", group: "Optimize", href: "/app/assets" },
+  { label: "Content score", group: "Optimize", href: "/app/content-score" },
+  { label: "Page health", group: "Optimize", href: "/app/page-health" },
+  { label: "Settings", group: "Account", href: "/app/settings" },
+  { label: "Integrations", group: "Settings", href: "/app/settings/integrations" },
+  { label: "Team", group: "Settings", href: "/app/settings/team" },
+  { label: "Billing", group: "Settings", href: "/app/settings/billing" },
+  { label: "API keys", group: "Settings", href: "/app/settings/api-keys" },
+];
+
+const ACTIONS = [
+  { key: "export-citations", label: "Export citations (1,284)", group: "Citations" },
+  { key: "whats-new", label: "What's new", group: "Answr" },
+];
+
 export default function CommandK() {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const router = useRouter();
   const { range, platform } = useFilters();
 
@@ -43,6 +77,16 @@ export default function CommandK() {
     };
   }, []);
 
+  const query = q.trim().toLowerCase();
+  const screens = useMemo(
+    () => SCREENS.filter((s) => !query || s.label.toLowerCase().includes(query) || s.group.toLowerCase().includes(query)),
+    [query],
+  );
+  const actions = useMemo(
+    () => ACTIONS.filter((a) => !query || a.label.toLowerCase().includes(query) || a.group.toLowerCase().includes(query)),
+    [query],
+  );
+
   if (!open) return null;
 
   const close = () => setOpen(false);
@@ -54,9 +98,6 @@ export default function CommandK() {
       ["Total", String(CITATIONS_TOTAL), "100"],
     ];
     const filename = "nike-citations-source-mix-30d.csv";
-    /* Same window honesty as every other export path: the header names the
-       window the rows cover, and carries a "not applied" note when the
-       workspace filter is somewhere else (lib/export/active-window.ts). */
     const csv = buildExecutiveCsv(
       withWindowNote(
         wrapRows(rows, {
@@ -66,8 +107,8 @@ export default function CommandK() {
           sectionTitle: "Source mix",
         }),
         range,
-        platform
-      )
+        platform,
+      ),
     );
     const url = URL.createObjectURL(csvBlob(csv));
     const a = document.createElement("a");
@@ -75,39 +116,42 @@ export default function CommandK() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    toast(
-      `${filename} downloaded — 1,284 citations across 4 source classes.${windowToastSuffix(range, platform)}`
-    );
+    toast(`${filename} downloaded — 1,284 citations across 4 source classes.${windowToastSuffix(range, platform)}`);
     close();
   };
 
-  const screenRow = (label: string, group: string, href: string, active: boolean) => (
-    <button
-      type="button"
-      onClick={() => {
-        close();
-        router.push(href);
-      }}
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        margin: "0 8px",
-        padding: "8px",
-        borderRadius: "6px",
-        background: active ? "rgba(255,255,255,0.05)" : "transparent",
-        border: "none",
-        fontSize: "12.5px",
-        color: active ? "var(--tx)" : "var(--mut)",
-        fontFamily: "inherit",
-        cursor: "pointer",
-        textAlign: "left",
-        width: "calc(100% - 16px)",
-      }}
-    >
-      <span>{label}</span>
+  const runAction = (key: string) => {
+    if (key === "export-citations") return exportCitations();
+    if (key === "whats-new") {
+      close();
+      window.dispatchEvent(new CustomEvent("answr:whatsnew"));
+    }
+  };
+
+  const rowBtn: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "space-between",
+    margin: "0 8px",
+    padding: "8px",
+    borderRadius: "6px",
+    background: "transparent",
+    border: "none",
+    fontSize: "12.5px",
+    color: "var(--mut)",
+    fontFamily: "inherit",
+    cursor: "pointer",
+    textAlign: "left",
+    width: "calc(100% - 16px)",
+  };
+
+  const label = (l: string, group: string, onClick: () => void) => (
+    <button key={l} type="button" onClick={onClick} style={rowBtn}>
+      <span>{l}</span>
       <span style={{ color: "var(--fnt)", fontSize: "11px" }}>{group}</span>
     </button>
   );
+
+  const empty = screens.length === 0 && actions.length === 0;
 
   return (
     <>
@@ -123,63 +167,33 @@ export default function CommandK() {
             <span style={{ color: "var(--fnt)" }}>{"⌕"}</span>
             <input
               aria-label="Search screens and actions"
-              defaultValue="citations"
+              placeholder="Search screens and actions…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
               autoFocus
-              style={{ flex: 1, fontSize: "13px", color: "var(--tx)", background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0 }}
+              style={{ flex: 1, fontSize: "13px", color: "var(--tx)", background: "transparent", border: "none", fontFamily: "inherit", padding: 0 }}
             />
             <span style={{ marginLeft: "auto", fontSize: "10px", color: "var(--fnt)", border: "1px solid var(--brd)", borderRadius: "4px", padding: "1px 5px", flex: "none" }}>{"ESC"}</span>
           </div>
-          <div style={{ padding: "8px 8px 4px", fontSize: "10.5px", fontWeight: 500, color: "var(--fnt)", paddingLeft: "16px" }}>{"SCREENS"}</div>
-          {screenRow("Citations", "Monitor", "/app/citations", true)}
-          {screenRow("Watched URLs", "Citations", "/app/citations/watched", false)}
-          <div style={{ padding: "8px 8px 4px", fontSize: "10.5px", fontWeight: 500, color: "var(--fnt)", paddingLeft: "16px" }}>{"ACTIONS"}</div>
-          <button
-            type="button"
-            onClick={exportCitations}
-            style={{
-              display: "block",
-              width: "calc(100% - 16px)",
-              margin: "0 8px 4px",
-              padding: "8px",
-              borderRadius: "6px",
-              fontSize: "12.5px",
-              color: "var(--mut)",
-              background: "transparent",
-              border: "none",
-              textAlign: "left",
-              fontFamily: "inherit",
-              cursor: "pointer",
-            }}
-          >
-            {"Export citations (1,284)"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              close();
-              window.dispatchEvent(new CustomEvent("answr:whatsnew"));
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              width: "calc(100% - 16px)",
-              margin: "0 8px 4px",
-              padding: "8px",
-              borderRadius: "6px",
-              fontSize: "12.5px",
-              color: "var(--mut)",
-              background: "transparent",
-              border: "none",
-              textAlign: "left",
-              fontFamily: "inherit",
-              cursor: "pointer",
-            }}
-          >
-            <span>{"What's new"}</span>
-            <span style={{ color: "var(--fnt)", fontSize: "11px" }}>{"Answr"}</span>
-          </button>
-          <div style={{ margin: "8px", borderTop: "1px solid var(--brd)", padding: "10px 8px 6px", fontSize: "11.5px", color: "var(--fnt)" }}>
-            {"No results for \"citatons\"? Search is fuzzy — typos still match."}
+
+          <div style={{ maxHeight: "min(60vh, 420px)", overflowY: "auto", paddingBottom: "6px" }}>
+            {screens.length > 0 && (
+              <>
+                <div style={{ padding: "8px 8px 4px", fontSize: "10.5px", fontWeight: 500, color: "var(--fnt)", paddingLeft: "16px" }}>{"SCREENS"}</div>
+                {screens.map((s) => label(s.label, s.group, () => { close(); router.push(s.href); }))}
+              </>
+            )}
+            {actions.length > 0 && (
+              <>
+                <div style={{ padding: "8px 8px 4px", fontSize: "10.5px", fontWeight: 500, color: "var(--fnt)", paddingLeft: "16px" }}>{"ACTIONS"}</div>
+                {actions.map((a) => label(a.label, a.group, () => runAction(a.key)))}
+              </>
+            )}
+            {empty && (
+              <div style={{ padding: "22px 16px", fontSize: "12.5px", color: "var(--fnt)", textAlign: "center" }}>
+                {`No screens or actions match “${q.trim()}”.`}
+              </div>
+            )}
           </div>
         </div>
       </div>
