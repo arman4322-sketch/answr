@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* Waitlist capture — a real demand-validation tool. Persists to /api/lead with
    source "waitlist" (durable once storage is configured; visible in
@@ -15,6 +15,24 @@ export default function WaitlistForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const attribution = useRef<{ utmSource?: string; utmCampaign?: string; referrer?: string }>({});
+
+  // Capture campaign attribution and fire a first-party view ping (no cookies).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : undefined;
+    const utmSource = p.get("utm_source") ?? undefined;
+    attribution.current = {
+      utmSource: utmSource ?? undefined,
+      utmCampaign: p.get("utm_campaign") ?? undefined,
+      referrer: ref,
+    };
+    fetch("/api/waitlist/view", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: utmSource ?? ref }),
+    }).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +46,7 @@ export default function WaitlistForm() {
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ source: "waitlist", email: email.trim(), company: company.trim() }),
+        body: JSON.stringify({ source: "waitlist", email: email.trim(), company: company.trim(), ...attribution.current }),
       });
       const data = (await res.json()) as { ok: boolean; error?: string };
       if (data.ok) setDone(true);

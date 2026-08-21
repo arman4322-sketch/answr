@@ -12,9 +12,12 @@ function fmt(ts: number): string {
 
 /* Reads captured leads from /api/lead (same route module the forms POST to, so
    the in-memory store is shared; durable once KV is configured). */
+type Funnel = { views: number; signups: number; conversion: number; bySource: { source: string; views: number; signups: number; conversion: number }[] };
+
 export default function LeadsTable() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [durable, setDurable] = useState(false);
+  const [funnel, setFunnel] = useState<Funnel | null>(null);
 
   useEffect(() => {
     fetch("/api/lead")
@@ -26,10 +29,40 @@ export default function LeadsTable() {
         } else setLeads([]);
       })
       .catch(() => setLeads([]));
+    fetch("/api/waitlist/view")
+      .then((r) => r.json())
+      .then((d: Funnel & { ok: boolean }) => { if (d.ok) setFunnel(d); })
+      .catch(() => {});
   }, []);
 
   return (
     <>
+      {funnel && (funnel.views > 0 || funnel.signups > 0) && (
+        <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", padding: "16px 18px" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600 }}>Waitlist funnel</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginTop: "12px" }}>
+            {[["Views", String(funnel.views)], ["Signups", String(funnel.signups)], ["Conversion", `${funnel.conversion}%`]].map(([l, v]) => (
+              <div key={l} style={{ background: "var(--bg2)", border: "1px solid var(--brd)", borderRadius: "8px", padding: "10px 12px" }}>
+                <div style={{ fontSize: "18px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+                <div style={{ fontSize: "10.5px", color: "var(--mut)", marginTop: "2px" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+          {funnel.bySource.length > 0 && (
+            <div style={{ marginTop: "12px", borderTop: "1px solid var(--brd)", paddingTop: "10px" }}>
+              <div style={{ fontSize: "10.5px", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--fnt)", marginBottom: "6px" }}>By source</div>
+              {funnel.bySource.map((s) => (
+                <div key={s.source} style={{ display: "grid", gridTemplateColumns: "1.4fr .6fr .6fr .6fr", fontSize: "12.5px", padding: "5px 0", color: "var(--mut)", fontVariantNumeric: "tabular-nums" }}>
+                  <span style={{ color: "var(--tx)" }}>{s.source}</span>
+                  <span>{s.views} v</span>
+                  <span>{s.signups} s</span>
+                  <span>{s.conversion}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", padding: "16px 18px" }}>
         <div style={{ fontSize: "14px", fontWeight: 600 }}>Captured leads</div>
         <div style={{ fontSize: "12.5px", color: "var(--mut)", marginTop: "6px", lineHeight: 1.6 }}>

@@ -52,8 +52,11 @@ export interface Lead {
   email: string;
   name?: string;
   company?: string;
-  source: string; // "demo" | "snapshot" | "handbook" | "signup" | ...
+  source: string; // "demo" | "snapshot" | "handbook" | "signup" | "waitlist" | ...
   message?: string;
+  utmSource?: string; // campaign attribution (utm_source / utm_campaign / referrer)
+  utmCampaign?: string;
+  referrer?: string;
   createdAt: number;
 }
 
@@ -67,11 +70,28 @@ export async function createLead(input: Omit<Lead, "id" | "createdAt">): Promise
     company: input.company,
     source: input.source,
     message: input.message,
+    utmSource: input.utmSource,
+    utmCampaign: input.utmCampaign,
+    referrer: input.referrer,
   };
   return db().put("leads", lead);
 }
 export function listLeads(): Promise<Lead[]> {
   return db().list<Lead>("leads");
+}
+
+// ---- Waitlist view events (for funnel / conversion) ----
+export interface ViewEvent {
+  id: string;
+  page: string; // e.g. "waitlist"
+  source?: string; // utm_source / referrer bucket
+  ts: number;
+}
+export function recordView(page: string, source?: string): Promise<ViewEvent> {
+  return db().put("views", { id: newId("view"), page, source, ts: Date.now() });
+}
+export function listViews(): Promise<ViewEvent[]> {
+  return db().list<ViewEvent>("views");
 }
 
 // ---- Prompts (tenant-scoped) ----

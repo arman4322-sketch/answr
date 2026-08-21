@@ -40,6 +40,9 @@ export async function POST(req: Request) {
     company,
     source: cap(body.source, 40) ?? "web",
     message: cap(body.message, 2000),
+    utmSource: cap(body.utmSource, 80),
+    utmCampaign: cap(body.utmCampaign, 80),
+    referrer: cap(body.referrer, 300),
   });
 
   await notify(lead.email, lead.source).catch(() => {});
