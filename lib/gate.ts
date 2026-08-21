@@ -16,6 +16,11 @@
 export const GATE_COOKIE = "answr_demo_access";
 export const DEMO_EMAIL = "dana@nike.com";
 
+/* Real-account session cookie name. Defined here (an edge-safe module with no
+   node imports) so both the proxy and lib/auth can reference it without the
+   proxy pulling in node:crypto. */
+export const SESSION_COOKIE = "answr_session";
+
 /** The shared passphrase. Override per environment via DEMO_PASSWORD. */
 export function demoPassword(): string {
   return process.env.DEMO_PASSWORD || "answr-demo";

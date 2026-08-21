@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
-import { GATE_COOKIE, isGated, isUnlocked } from "@/lib/gate";
+import { GATE_COOKIE, SESSION_COOKIE, isGated, isUnlocked } from "@/lib/gate";
 
 /* First-party AI-crawler capture (INTEGRATIONS.md Move 2, pilot step 3).
 
@@ -48,13 +48,20 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
     );
   }
 
-  /* Demo gate — see lib/gate.ts. The dashboard is not browsable by direct URL
-     without the shared passphrase; marketing stays public so crawlers (and
-     prospects) can read it. This is access control, not authentication. */
-  if (isGated(request.nextUrl.pathname) && !isUnlocked(request.cookies.get(GATE_COOKIE)?.value)) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(login);
+  /* Access control for /app. Two paths are honored:
+       - the shared demo passphrase cookie (isUnlocked), for the public demo, and
+       - a real account session cookie (presence only — this is edge middleware
+         and cannot hit the data layer; the dashboard layout validates it for
+         real via lib/auth and bounces invalid/expired sessions).
+     Marketing stays public so crawlers (and prospects) can read it. */
+  if (isGated(request.nextUrl.pathname)) {
+    const hasDemo = isUnlocked(request.cookies.get(GATE_COOKIE)?.value);
+    const hasSession = !!request.cookies.get(SESSION_COOKIE)?.value;
+    if (!hasDemo && !hasSession) {
+      const login = new URL("/login", request.url);
+      login.searchParams.set("next", request.nextUrl.pathname);
+      return NextResponse.redirect(login);
+    }
   }
 
   return NextResponse.next();

@@ -56,14 +56,44 @@ export default function SignupForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!email.trim()) {
+    const fd = new FormData(e.currentTarget);
+    const em = String(fd.get("email") ?? "").trim();
+    const pw = String(fd.get("password") ?? "");
+    const name = [fd.get("firstName"), fd.get("lastName")].map((v) => String(v ?? "").trim()).filter(Boolean).join(" ");
+    if (!em) {
       setInvalid(true);
       return;
     }
-    router.push("/onboarding/brand");
+    if (pw.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    // Real account creation (lib/auth): creates a scrypt-hashed user + workspace
+    // and a session, then continues to onboarding. The session governs /app.
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: em, password: pw, name }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (data.ok) {
+        router.push("/onboarding/brand");
+      } else {
+        setError(data.error ?? "Could not create account.");
+        setBusy(false);
+      }
+    } catch {
+      setError("Could not reach the server.");
+      setBusy(false);
+    }
   }
 
   return (
@@ -111,7 +141,10 @@ export default function SignupForm() {
           )}
           <label htmlFor="signup-password" style={{...fieldLabel,marginTop:"14px"}}>{"Password"}</label>
           <input id="signup-password" name="password" type="password" placeholder="8+ characters" autoComplete="new-password" style={fieldInput} />
-          <button type="submit" className="btn-ac" style={{display:"block",width:"100%",textAlign:"center",fontSize:"13px",fontWeight:"600",borderRadius:"8px",padding:"11px 0",marginTop:"20px",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{"Create account"}</button>
+          {error && (
+            <div role="alert" style={{fontSize:"11.5px",color:"var(--bad)",marginTop:"8px",lineHeight:"1.5"}}>{error}</div>
+          )}
+          <button type="submit" disabled={busy} className="btn-ac" style={{display:"block",width:"100%",textAlign:"center",fontSize:"13px",fontWeight:"600",borderRadius:"8px",padding:"11px 0",marginTop:"20px",border:"none",cursor:busy?"default":"pointer",fontFamily:"inherit",opacity:busy?0.7:1}}>{busy ? "Creating account…" : "Create account"}</button>
         </form>
         <div style={{fontSize:"11.5px",color:"var(--fnt)",marginTop:"14px",textAlign:"center",lineHeight:"1.5"}}>{"By signing up you agree to the "}<Link href="/terms">{"Terms"}</Link>{" and "}<Link href="/privacy">{"Privacy Policy"}</Link>{"."}</div>
       </div>

@@ -9,6 +9,7 @@ import {
   type Session,
 } from "@/lib/db/entities";
 import { db, newId } from "@/lib/db";
+import { SESSION_COOKIE } from "@/lib/gate";
 
 /* Real authentication primitives — the hard, security-sensitive core built for
    real: scrypt password hashing (node:crypto, no dependency), opaque session
@@ -24,7 +25,7 @@ import { db, newId } from "@/lib/db";
    the gate as-is means the live demo keeps working while this system is ready to
    switch on. A security review is warranted before production use. */
 
-export const AUTH_COOKIE = "answr_session";
+export const AUTH_COOKIE = SESSION_COOKIE;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 const KEYLEN = 64;
 
