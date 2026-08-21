@@ -77,7 +77,7 @@ export default function AddPromptsModal() {
     toast(`Drafted ${picks.length} prompts for running shoes & training apparel — edit before adding.`);
   }
 
-  function confirm() {
+  async function confirm() {
     if (overBy > 0) {
       toast(`That's ${overBy} over the plan's ${PROMPT_QUOTA.limit.toLocaleString()}-prompt limit — remove a few or archive tracked prompts.`);
       return;
@@ -86,9 +86,28 @@ export default function AddPromptsModal() {
       toast("Nothing to add — paste prompts one per line, or use Suggest prompts.");
       return;
     }
-    toast(`${adding} prompt${adding === 1 ? "" : "s"} added to this demo list — ${after.toLocaleString()} of ${PROMPT_QUOTA.limit.toLocaleString()} in the sample quota. On a live workspace, tracked prompts run on tomorrow's sample; nothing is saved in the demo.`);
-    setText("");
-    close();
+    // Persist to the data layer (durable once storage is configured). These
+    // prompts feed the sampler (lib/sampler/run reads tracked prompts).
+    try {
+      const res = await fetch("/api/prompts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompts: parsed.fresh }),
+      });
+      const data = (await res.json()) as { ok: boolean; added?: number; total?: number; durable?: boolean; error?: string };
+      if (data.ok) {
+        toast(
+          `${data.added} prompt${data.added === 1 ? "" : "s"} saved — ${data.total} now tracked and queued for the next sample.` +
+            (data.durable ? "" : " (Stored in memory until you add a KV key.)"),
+        );
+        setText("");
+        close();
+      } else {
+        toast(data.error ?? "Could not save prompts.");
+      }
+    } catch {
+      toast("Could not reach the server to save prompts.");
+    }
   }
 
   return (

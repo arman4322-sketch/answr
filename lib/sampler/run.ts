@@ -1,6 +1,7 @@
 import { configuredProviders } from "@/lib/providers/registry";
 import type { AnswerProvider } from "@/lib/providers/types";
 import { answerStore, type PromptRun, type SampledAnswer } from "./store";
+import { listPrompts } from "@/lib/db/entities";
 
 /* The nightly sampler — the core of "the engine". Given a set of prompts, it
    runs each configured provider against each prompt, normalizes the answers +
@@ -61,7 +62,13 @@ export async function runSampler(opts: RunSamplerOptions = {}): Promise<SamplerR
     return { ...base, ok: false, reason: "no-providers", finishedAt: startedAt };
   }
 
-  const prompts = opts.prompts?.length ? opts.prompts : DEFAULT_PROMPTS;
+  // Prompt source priority: explicit arg → the user's tracked prompts (persisted
+  // via /api/prompts) → the built-in smoke-test set.
+  let prompts = opts.prompts?.length ? opts.prompts : [];
+  if (prompts.length === 0) {
+    const tracked = await listPrompts("demo").catch(() => []);
+    prompts = tracked.length ? tracked.map((p) => p.text) : DEFAULT_PROMPTS;
+  }
   let answers = 0;
   let errors = 0;
   let runs = 0;

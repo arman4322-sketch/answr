@@ -40,13 +40,30 @@ export default function CreateActionModal({ platform, onClose }: { platform: Pla
   const cat = CATEGORY_STYLE[category] ?? CATEGORY_STYLE.CONTENT;
   const canSubmit = title.trim().length > 0;
 
-  function addToQueue() {
+  async function addToQueue() {
     if (!canSubmit) {
       toast("Give the action a title first.");
       return;
     }
-    toast(`Action #${ACTION_DRAFT.queueId} “${title.trim()}” drafted — est. ${impact}, effort ${effort}. On a live workspace this is added to the queue; the demo doesn't save it.`);
-    onClose();
+    try {
+      const res = await fetch("/api/actions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: title.trim(), impact, effort }),
+      });
+      const data = (await res.json()) as { ok: boolean; total?: number; durable?: boolean; error?: string };
+      if (data.ok) {
+        toast(
+          `“${title.trim()}” added to the queue — ${data.total} action${data.total === 1 ? "" : "s"} saved (est. ${impact}, effort ${effort}).` +
+            (data.durable ? "" : " Stored in memory until you add a KV key."),
+        );
+        onClose();
+      } else {
+        toast(data.error ?? "Could not save the action.");
+      }
+    } catch {
+      toast("Could not reach the server to save the action.");
+    }
   }
 
   return (
