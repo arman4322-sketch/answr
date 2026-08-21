@@ -117,6 +117,14 @@ export default function Sidebar() {
         maxWidth: collapsed ? COLLAPSED : EXPANDED,
         boxSizing: "border-box",
         overflowX: "hidden",
+        /* Pin the rail to the viewport so its bottom account row stays visible.
+           Without this the flex row stretches the rail to the (taller) page
+           content height, pushing the account menu off the bottom of the page. */
+        position: "sticky",
+        top: 0,
+        alignSelf: "flex-start",
+        height: "100vh",
+        overflowY: "auto",
         flex: "none",
         borderRight: "1px solid var(--brd)",
         display: "flex",
@@ -124,7 +132,6 @@ export default function Sidebar() {
         padding: collapsed ? "12px 0" : "12px 10px",
         alignItems: collapsed ? "center" : "stretch",
         transition: "width .16s ease",
-        minHeight: "100vh",
       }}
     >
       <BrandSwitcher collapsed={collapsed} onToggleCollapse={toggle} />
