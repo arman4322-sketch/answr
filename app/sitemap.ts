@@ -8,6 +8,7 @@ const SITE = "https://useanswr.com";
 const ROUTES: string[] = [
   "/",
   "/pricing",
+  "/waitlist",
   "/enterprise",
   "/security",
   "/integrations",
