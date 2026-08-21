@@ -60,8 +60,8 @@ const base = overviewReport({
   competitors: [
     { rank: "1", brand: "Nike (You)", sov: "28.6%", delta: "+1.1", topPlatform: "ChatGPT" },
     { rank: "2", brand: "Adidas", sov: "24.1%", delta: "-0.6", topPlatform: "Perplexity" },
-    { rank: "3", brand: "Puma", sov: "18.9%", delta: "+0.3", topPlatform: "Gemini" },
-    { rank: "4", brand: "Under Armour", sov: "15.2%", delta: "-1.4", topPlatform: "ChatGPT" },
+    { rank: "3", brand: "Brooks", sov: "18.9%", delta: "+0.3", topPlatform: "Gemini" },
+    { rank: "4", brand: "Asics", sov: "15.2%", delta: "-1.4", topPlatform: "ChatGPT" },
     { rank: "5", brand: "New Balance", sov: "13.2%", delta: "+0.9", topPlatform: "Claude" },
   ],
   platforms: [

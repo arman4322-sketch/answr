@@ -8,8 +8,8 @@
      are per-topic and intentionally differ). Window start 23.5 keeps the frame's
      strong upward story with a visible lift after late July.
    - Share of voice, competitors: endpoints match the frame's painted final
-     points (read off the frame's 10–40% axis): Adidas 24.9, Puma 18.8,
-     Under Armour 13.1. Colors are the frame's legend assignments.
+     points (read off the frame's 10–40% axis): Adidas 24.9, Brooks 18.8,
+     Asics 13.1. Colors are the frame's legend assignments.
    - Positive sentiment: ends 74 (headline "74%"), starts 71 so "↑ 3pt" is true.
    - Shopping recommendation rate: ends 31.4 (headline "31.4%"), starts 29.2 so
      "↑ 2.2" is true.
@@ -45,13 +45,13 @@ export const visibilityByBrandSeries: TrendSeries[] = [
   },
   {
     id: "puma",
-    label: "Puma",
+    label: "Brooks",
     color: "#b98ed9",
     points: [16.0, 16.1, 16.1, 16.0, 16.1, 16.2, 16.2, 16.4, 16.7, 16.9, 17.2, 17.2, 17.3, 17.1, 17.1, 17.5, 17.5, 17.7, 17.8, 17.6, 18.0, 18.0, 18.2, 18.1, 18.0, 18.6, 18.4, 18.3, 18.6, 18.8],
   },
   {
     id: "under-armour",
-    label: "Under Armour",
+    label: "Asics",
     color: "#d9b679",
     points: [14.7, 14.8, 14.4, 14.6, 14.2, 14.1, 14.6, 14.2, 14.3, 14.0, 14.3, 14.3, 13.9, 13.8, 13.7, 14.0, 14.0, 13.6, 13.7, 13.8, 13.7, 13.6, 13.6, 13.5, 13.3, 13.0, 13.0, 13.5, 13.0, 13.1],
   },

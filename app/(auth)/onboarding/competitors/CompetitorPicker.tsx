@@ -16,14 +16,14 @@ const MAX = 10;
 
 const initialTracked: Brand[] = [
   { name: "Adidas", domain: "adidas.com", color: "#7fa7d9" },
-  { name: "Puma", domain: "puma.com", color: "#b98ed9" },
-  { name: "Under Armour", domain: "underarmour.com", color: "#d9b679" },
+  { name: "Brooks", domain: "brooksrunning.com", color: "#b98ed9" },
+  { name: "Asics", domain: "asics.com", color: "#d9b679" },
 ];
 
 const initialSuggested: Brand[] = [
   { name: "New Balance", domain: "newbalance.com", color: "#d985a8" },
-  { name: "Asics", domain: "asics.com", color: "#7fd9c4" },
-  { name: "Brooks", domain: "brooksrunning.com", color: "#e0a878" },
+  { name: "Saucony", domain: "saucony.com", color: "#7fd9c4" },
+  { name: "Hoka", domain: "hoka.com", color: "#e0a878" },
 ];
 
 const swatches = ["#7fa7d9", "#b98ed9", "#d9b679", "#d985a8", "#7fd9c4", "#e0a878", "#8e7cf2", "#4cb782"];

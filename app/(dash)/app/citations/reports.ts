@@ -180,8 +180,8 @@ export const watchedUrlsSpec: ReportSpec = {
       columns: ["Domain", "Category citations", "Cites most", "Suggested play"],
       rows: [
         ["believeintherun.com", "64", "Adidas ×41", "Pitch inclusion"],
-        ["youtube.com/@runningweekly", "38", "Puma ×22", "Collab outreach"],
-        ["quora.com/topic/running-shoes", "29", "Under Armour ×17", "Answer threads"],
+        ["youtube.com/@runningweekly", "38", "Brooks ×22", "Collab outreach"],
+        ["quora.com/topic/running-shoes", "29", "Asics ×17", "Answer threads"],
       ],
     },
   ],

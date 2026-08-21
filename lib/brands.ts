@@ -53,7 +53,7 @@ export const BRANDS: Brand[] = [
     prompts: "412",
     promptQuota: "/550",
     competitors: "4",
-    competitorNames: ["Adidas", "Puma", "Under Armour", "New Balance"],
+    competitorNames: ["Adidas", "Brooks", "Asics", "New Balance"],
     live: true,
     search: "nike nike.com athletic footwear apparel running shoes",
   },

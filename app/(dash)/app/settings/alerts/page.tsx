@@ -144,7 +144,7 @@ export default function NotificationsSettingsPage() {
                 <span style={{ color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"2h ago"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>{'"Sustainability" — Under Armour overtook Nike'}</span>
+                <span>{'"Sustainability" — Asics overtook Nike'}</span>
                 <span style={{ color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"Jul 30"}</span>
               </div>
             </div>

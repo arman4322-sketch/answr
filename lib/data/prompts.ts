@@ -17,7 +17,7 @@
      avg position  .55×1.4 + .25×1.2 + .12×1.9 + .08×1.6 = 1.43 → 1.4  ✓
 
    The ChatGPT tab therefore keeps the frame's painted 78% / 1.4 / Positive /
-   "Adidas, Under Armour" untouched; the other three tabs are new content.
+   "Adidas, Asics" untouched; the other three tabs are new content.
 
    Each platform also ships its last 14 daily runs (Jul 23 → Aug 5, 2026 — the
    demo window's final fortnight). The runs reproduce their platform's headline:
@@ -96,7 +96,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     segments: [
       { text: "\n                  For marathon training, the strongest picks pair a durable daily trainer with a lighter race-day shoe. " },
       { text: "Nike leads for cushioning and race-day speed", highlight: true },
-      { text: ", with the Pegasus for weekly mileage and the Vaporfly for race day. Adidas is a steadier option for wide feet, while Under Armour focuses on budget trainers…\n                  " },
+      { text: ", with the Pegasus for weekly mileage and the Vaporfly for race day. Adidas is a steadier option for wide feet, while Asics focuses on budget trainers…\n                  " },
     ],
     citations: ["¹ nike.com/running", "² runnersworld.com", "³ reddit.com"],
     mentionRate: "78%",
@@ -105,7 +105,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     avgPosition: "1.4",
     sentiment: "Positive",
     sentimentColor: "var(--ac)",
-    competitors: "Adidas, Under Armour",
+    competitors: "Adidas, Asics",
     sparkPath: "M0 40L27 37L54 38L81 33L108 34L135 28L162 29L189 24L216 25L243 20L270 21L297 15L324 12L351 10L380 10",
     weight: 0.55,
     runs: runs([
@@ -132,7 +132,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     segments: [
       { text: "Marathon training usually calls for two shoes — a cushioned daily trainer and a lighter plated shoe for race day.¹ Across 2026 reviews and coach roundups, " },
       { text: "Nike is the most-recommended brand for both roles", highlight: true },
-      { text: ": the Pegasus for weekly mileage and the Vaporfly for race day.² New Balance is named next for wide feet, Adidas Adizero for tempo work,³ and Puma Deviate as the value pick.⁴ Reviewers agree the plate matters less than fit for a first marathon.²" },
+      { text: ": the Pegasus for weekly mileage and the Vaporfly for race day.² New Balance is named next for wide feet, Adidas Adizero for tempo work,³ and Brooks Deviate as the value pick.⁴ Reviewers agree the plate matters less than fit for a first marathon.²" },
     ],
     citations: ["¹ runnersworld.com", "² believeintherun.com", "³ nike.com/running", "⁴ letsrun.com"],
     mentionRate: "86%",
@@ -141,7 +141,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     avgPosition: "1.2",
     sentiment: "Positive",
     sentimentColor: "var(--ac)",
-    competitors: "Adidas, New Balance, Puma",
+    competitors: "Adidas, New Balance, Brooks",
     sparkPath: "M0 44L27 42L54 41L81 38L108 36L135 35L162 32L189 30L216 28L243 24L270 22L297 18L324 14L351 11L380 8",
     weight: 0.25,
     runs: runs([
@@ -168,7 +168,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     segments: [
       { text: "It depends on your foot shape, weekly mileage, and whether you want a carbon plate. Most training plans work best with two shoes: a soft daily trainer and something lighter for race day. Adidas Adizero comes up constantly for tempo runs, and " },
       { text: "Nike's Pegasus and Vaporfly", highlight: true },
-      { text: " are the pairing runners mention most for the daily/race split. New Balance and Under Armour are worth trying if you need a wider toe box. One caveat: I can't tell you what fits your feet — get gait-analysed at a running shop before you commit to a plated shoe." },
+      { text: " are the pairing runners mention most for the daily/race split. New Balance and Asics are worth trying if you need a wider toe box. One caveat: I can't tell you what fits your feet — get gait-analysed at a running shop before you commit to a plated shoe." },
     ],
     citations: ["¹ runnersworld.com", "² podiumrunner.com"],
     mentionRate: "71%",
@@ -177,7 +177,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     avgPosition: "1.9",
     sentiment: "Neutral",
     sentimentColor: "var(--mut)",
-    competitors: "Adidas, New Balance, Under Armour",
+    competitors: "Adidas, New Balance, Asics",
     sparkPath: "M0 22L27 21L54 23L81 22L108 24L135 23L162 25L189 24L216 26L243 25L270 27L297 26L324 28L351 27L380 28",
     weight: 0.12,
     runs: runs([
@@ -204,7 +204,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     segments: [
       { text: "Most runners rotate two shoes while marathon training: a cushioned daily trainer and a lighter shoe for race day. Frequently listed options include the " },
       { text: "Nike Pegasus and Nike Vaporfly", highlight: true },
-      { text: ", the Adidas Adizero Boston, and the Puma Deviate Nitro. For a first marathon, fit and comfort matter more than a carbon plate." },
+      { text: ", the Adidas Adizero Boston, and the Brooks Deviate Nitro. For a first marathon, fit and comfort matter more than a carbon plate." },
     ],
     citations: ["¹ runnersworld.com", "² nike.com", "³ dickssportinggoods.com", "⁴ reddit.com"],
     mentionRate: "64%",
@@ -213,7 +213,7 @@ export const PLATFORM_ANSWERS: PlatformAnswer[] = [
     avgPosition: "1.6",
     sentiment: "Positive",
     sentimentColor: "var(--ac)",
-    competitors: "Adidas, Puma",
+    competitors: "Adidas, Brooks",
     sparkPath: "M0 34L27 35L54 33L81 34L108 32L135 33L162 31L189 32L216 30L243 31L270 29L297 30L324 28L351 29L380 27",
     weight: 0.08,
     runs: runs([

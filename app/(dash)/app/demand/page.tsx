@@ -182,7 +182,7 @@ export default function DemandPage() {
             </span>
             <span style={{fontWeight:"600",fontVariantNumeric:"tabular-nums"}}>{"38K"}</span>
             <span style={{fontSize:"12px",fontWeight:"500",color:"#e5636e"}}>{"↓ 2K"}</span>
-            <span style={{color:"var(--mut)"}}>{"Puma · 26%"}</span>
+            <span style={{color:"var(--mut)"}}>{"Brooks · 26%"}</span>
             <svg width="72" height="22" viewBox="0 0 72 22">
               <path d="M0 9L12 10L24 10L36 12L48 12L60 13L72 14" fill="none" stroke="#b98ed9" strokeWidth="1.25" />
             </svg>

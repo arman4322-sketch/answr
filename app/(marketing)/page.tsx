@@ -156,7 +156,7 @@ export default function HomePage() {
 </span>
 <span>{"— Adidas"}
 </span>
-<span>{"— Puma"}
+<span>{"— Brooks"}
 </span>
 </span>
 </div>
@@ -210,7 +210,7 @@ export default function HomePage() {
 <div style={{display:"grid",gridTemplateColumns:"16px 1fr auto auto",gap:"8px",alignItems:"center",padding:"6px 13px",fontSize:"10.5px",borderTop:"1px solid var(--brd)"}}>
 <span style={{color:"var(--fnt)"}}>{"3"}
 </span>
-<span>{"Puma"}
+<span>{"Brooks"}
 </span>
 <span style={{fontWeight:"600",fontVariantNumeric:"tabular-nums"}}>{"18.9%"}
 </span>
@@ -220,7 +220,7 @@ export default function HomePage() {
 <div style={{display:"grid",gridTemplateColumns:"16px 1fr auto auto",gap:"8px",alignItems:"center",padding:"6px 13px",fontSize:"10.5px",borderTop:"1px solid var(--brd)"}}>
 <span style={{color:"var(--fnt)"}}>{"4"}
 </span>
-<span>{"Under Armour"}
+<span>{"Asics"}
 </span>
 <span style={{fontWeight:"600",fontVariantNumeric:"tabular-nums"}}>{"15.2%"}
 </span>

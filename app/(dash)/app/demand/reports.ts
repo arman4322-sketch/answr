@@ -50,7 +50,7 @@ export const demandSpec: ReportSpec = {
       label: "Only declining keyword",
       value: '"carbon plate shoe benefits" — 38K / month',
       delta: "-2K",
-      note: "Informational, and Puma leads it at 26%. The one term losing volume in the watchlist.",
+      note: "Informational, and Brooks leads it at 26%. The one term losing volume in the watchlist.",
     },
     {
       label: "Search quota",
@@ -77,7 +77,7 @@ export const demandSpec: ReportSpec = {
         ["best training shoes", "Commercial", "94K", "+6K", "Adidas · 31%"],
         ["marathon training shoes", "Informational", "76K", "+3K", "Nike · 29%"],
         ["nike vs adidas", "Comparison", "41K", "+9K", "Adidas · 38%"],
-        ["carbon plate shoe benefits", "Informational", "38K", "-2K", "Puma · 26%"],
+        ["carbon plate shoe benefits", "Informational", "38K", "-2K", "Brooks · 26%"],
         ["running shoe size guide", "Informational", "29K", "+1K", "Nike · 22%"],
       ],
     },

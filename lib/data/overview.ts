@@ -4,13 +4,13 @@
      "↑ 2.8" delta is true. Upward inflection after Jul 26 = the digest's "three
      new runnersworld.com citations" driving AI Overviews growth.
    - Competitor endpoints are visibility (not SoV) — scaled below Nike's,
-     consistent with the SoV table ordering (Adidas 24.1% > Puma 18.9%,
+     consistent with the SoV table ordering (Adidas 24.1% > Brooks 18.9%,
      ≈ SoV × 34.2/28.6): Adidas ends 28.9 drifting down (SoV ↓ 0.6),
-     Puma ends 22.8 drifting up (SoV ↑ 0.3).
+     Brooks ends 22.8 drifting up (SoV ↑ 0.3).
    - Jul 26 (index 19) matches the frame's depicted tooltip:
-     Nike 32.4 / Adidas 29.7 / Puma 22.6.
+     Nike 32.4 / Adidas 29.7 / Brooks 22.6.
    Series colors follow the page's own legend + SoV-table sparklines
-   (Nike var(--ac), Adidas #7fa7d9, Puma #b98ed9). */
+   (Nike var(--ac), Adidas #7fa7d9, Brooks #b98ed9). */
 
 import { last30Days, lastWeeks } from "@/lib/data/dates";
 import type { TrendSeries } from "@/components/app/charts/TrendChart";
@@ -148,7 +148,7 @@ export const avgPositionSeries: number[] = [
 
 /* Competitor share of voice — one daily series per brand, each ending on the
    value the table prints and starting at value − its Δ30d (Nike 28.6 ↑1.1 ·
-   Adidas 24.1 ↓0.6 · Puma 18.9 ↑0.3 · Under Armour 15.2 ↓1.4 ·
+   Adidas 24.1 ↓0.6 · Brooks 18.9 ↑0.3 · Asics 15.2 ↓1.4 ·
    New Balance 13.2 ↑0.9). "Top platform" is a per-brand attribute, not a
    window measure, so it stays as the frame printed it. */
 export type CompetitorRow = {
@@ -172,7 +172,7 @@ export const competitorSovRows: CompetitorRow[] = [
     ],
   },
   {
-    brand: "Puma",
+    brand: "Brooks",
     topPlatform: "Gemini",
     color: "#b98ed9",
     points: [
@@ -182,7 +182,7 @@ export const competitorSovRows: CompetitorRow[] = [
     ],
   },
   {
-    brand: "Under Armour",
+    brand: "Asics",
     topPlatform: "ChatGPT",
     color: "#d9b679",
     points: [
@@ -306,7 +306,7 @@ export const visibilityTrend: TrendSeries[] = [
   },
   {
     id: "puma",
-    label: "Puma",
+    label: "Brooks",
     color: "#b98ed9",
     points: [
       22.3, 22.1, 22.4, 22.2, 22.3, 22.5, 22.3, 22.4, 22.6, 22.4,

@@ -32,7 +32,7 @@ const MENTION_ITEMS = [
   "Mentions: Nike",
   "Mentions: any tracked brand",
   "Mentions: Adidas",
-  "Mentions: Under Armour",
+  "Mentions: Asics",
   "No brand mentioned",
 ];
 

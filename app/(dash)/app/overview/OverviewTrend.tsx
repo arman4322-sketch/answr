@@ -102,7 +102,7 @@ export default function OverviewTrend() {
         "overview:platform"
       );
       legend = [{ label: `Nike · ${row.label}`, color: "var(--ac)", value: null }];
-      footnote = `Visibility on ${row.label} only. Competitor visibility is tracked across all platforms, so the Adidas and Puma lines are hidden while this filter is on.`;
+      footnote = `Visibility on ${row.label} only. Competitor visibility is tracked across all platforms, so the Adidas and Brooks lines are hidden while this filter is on.`;
     } else {
       series = levelSeriesForRange(visibilityTrend, range, "overview:visibility");
       legend = series.map((s) => ({ label: s.label, color: s.color, value: null }));

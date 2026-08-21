@@ -164,7 +164,7 @@ export default function SettingsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr .8fr .5fr", alignItems: "center", padding: "12px 20px", fontSize: "13px", borderTop: "1px solid var(--brd)" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "2px", background: "#b98ed9" }} />
-                  {"Puma"}
+                  {"Brooks"}
                 </span>
                 <span style={{ fontSize: "12px", fontWeight: "400", fontVariantNumeric: "tabular-nums", color: "var(--mut)" }}>{"puma.com"}</span>
                 <span style={{ fontSize: "12px", fontWeight: "400", fontVariantNumeric: "tabular-nums", color: "var(--mut)" }}>{"Mar 2026"}</span>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr .8fr .5fr", alignItems: "center", padding: "12px 20px", fontSize: "13px", borderTop: "1px solid var(--brd)" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "2px", background: "#d9b679" }} />
-                  {"Under Armour"}
+                  {"Asics"}
                 </span>
                 <span style={{ fontSize: "12px", fontWeight: "400", fontVariantNumeric: "tabular-nums", color: "var(--mut)" }}>{"underarmour.com"}</span>
                 <span style={{ fontSize: "12px", fontWeight: "400", fontVariantNumeric: "tabular-nums", color: "var(--mut)" }}>{"Apr 2026"}</span>

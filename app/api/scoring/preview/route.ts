@@ -46,7 +46,7 @@ export async function GET() {
   const scores = scoreRuns(runs, {
     brand: "Nike",
     brandDomain: "nike.com",
-    competitors: ["Adidas", "Puma", "Brooks", "Asics", "New Balance"],
+    competitors: ["Adidas", "Brooks", "Asics", "New Balance", "Saucony"],
   });
 
   return NextResponse.json({

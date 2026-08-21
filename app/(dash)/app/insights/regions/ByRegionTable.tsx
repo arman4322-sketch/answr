@@ -28,9 +28,9 @@ const ROWS: Row[] = [
   { region: "United States", language: "English", visibility: "41.2%", barWidth: "41%", sov: "33.4%", delta: "↑ 2.4", deltaColor: "#4cb782", brand: { you: true }, highlight: true },
   { region: "United Kingdom", language: "English", visibility: "33.8%", barWidth: "34%", sov: "27.2%", delta: "↑ 1.6", deltaColor: "#4cb782", brand: { you: true } },
   { region: "DACH", language: "German", visibility: "27.4%", barWidth: "27%", sov: "21.8%", delta: "↑ 3.9", deltaColor: "#4cb782", brand: { dot: "#7fa7d9", name: "Adidas" } },
-  { region: "France", language: "French", visibility: "22.1%", barWidth: "22%", sov: "18.6%", delta: "↓ 0.8", deltaColor: "#e5636e", brand: { dot: "#b98ed9", name: "Puma" } },
+  { region: "France", language: "French", visibility: "22.1%", barWidth: "22%", sov: "18.6%", delta: "↓ 0.8", deltaColor: "#e5636e", brand: { dot: "#b98ed9", name: "Brooks" } },
   { region: "Brazil", language: "Portuguese", visibility: "12.2%", barWidth: "12%", sov: "10.4%", delta: "↑ 1.1", deltaColor: "#4cb782", brand: { dot: "#7fa7d9", name: "Adidas" } },
-  { region: "Japan", language: "Japanese", visibility: "9.8%", barWidth: "10%", sov: "8.1%", delta: "—", deltaColor: "var(--fnt)", brand: { dot: "#d9b679", name: "Under Armour" } },
+  { region: "Japan", language: "Japanese", visibility: "9.8%", barWidth: "10%", sov: "8.1%", delta: "—", deltaColor: "var(--fnt)", brand: { dot: "#d9b679", name: "Asics" } },
 ];
 
 export default function ByRegionTable() {

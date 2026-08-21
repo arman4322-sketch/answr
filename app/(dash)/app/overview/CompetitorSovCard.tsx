@@ -11,7 +11,7 @@ import { competitorSovRows } from "@/lib/data/overview";
    Each brand's % is its series' endpoint, each Δ is endpoint − start-of-window,
    the column header names the active window, and the row sparkline draws the
    same points. At 30 days it renders the shipped table exactly (Nike 28.6%
-   ↑1.1 · Adidas 24.1% ↓0.6 · Puma 18.9% ↑0.3 · Under Armour 15.2% ↓1.4 ·
+   ↑1.1 · Adidas 24.1% ↓0.6 · Brooks 18.9% ↑0.3 · Asics 15.2% ↓1.4 ·
    New Balance 13.2% ↑0.9). Markup and inline styles are the frame's. */
 
 const GRID = "40px 1.4fr 1fr .8fr 1fr 92px";
