@@ -22,6 +22,13 @@ type Result = {
   scores: Scores; brandMentions: number; competitorMentions: Record<string, number>; perPrompt: PerPrompt[];
 };
 
+function friendly(msg: string): string {
+  if (/\b429\b|quota|rate.?limit|too many/i.test(msg)) {
+    return "The AI is rate-limited right now — wait a minute and try again. (A paid Gemini key removes this limit.)";
+  }
+  return msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
+}
+
 const card: React.CSSProperties = { background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "12px", padding: "16px 18px" };
 const label: React.CSSProperties = { display: "block", fontSize: "10.5px", fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--fnt)", marginBottom: "5px" };
 const input: React.CSSProperties = { width: "100%", background: "var(--bg2)", border: "1px solid var(--brd)", borderRadius: "8px", padding: "9px 11px", color: "var(--tx)", fontSize: "13px", fontFamily: "inherit" };
@@ -34,6 +41,8 @@ export default function ScanRunner() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<Result | null>(null);
+  const [filling, setFilling] = useState(false);
+  const [fillErr, setFillErr] = useState<string | null>(null);
 
   async function run() {
     setBusy(true); setErr(null); setRes(null);
@@ -49,12 +58,37 @@ export default function ScanRunner() {
         }),
       });
       const d = (await r.json()) as Result;
-      if (!d.ok) { setErr(d.error || "Scan failed."); return; }
+      if (!d.ok) { setErr(friendly(d.error || "Scan failed.")); return; }
       setRes(d);
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendly((e as Error).message));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function autofill() {
+    if (!brand.trim()) { setFillErr("Enter a brand first."); return; }
+    setFilling(true); setFillErr(null);
+    try {
+      // 1) category (and refined brand) from the brand / website
+      const br = await fetch("/api/suggest/brand", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: domain.trim() || brand.trim() }),
+      }).then((r) => r.json()).catch(() => null);
+      const cat = br && br.ok && br.category ? (br.category as string) : category;
+      if (cat) setCategory(cat);
+      // 2) competitors from brand + category
+      const co = await fetch("/api/suggest/competitors", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brand: brand.trim(), domain: domain.trim() || undefined, category: cat || undefined }),
+      }).then((r) => r.json()).catch(() => null);
+      if (co && co.ok && co.competitors?.length) setCompetitors((co.competitors as string[]).join(", "));
+      else if (!co || !co.ok) setFillErr(friendly((co && co.error) || "Couldn't get suggestions — try again."));
+    } catch (e) {
+      setFillErr(friendly((e as Error).message));
+    } finally {
+      setFilling(false);
     }
   }
 
@@ -77,12 +111,16 @@ export default function ScanRunner() {
         <div><span style={label}>Website (optional)</span><input style={input} value={domain} onChange={(e) => setDomain(e.target.value)} /></div>
         <div><span style={label}>Category</span><input style={input} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. project management tools" /></div>
         <div><span style={label}>Competitors (comma-separated)</span><input style={input} value={competitors} onChange={(e) => setCompetitors(e.target.value)} /></div>
-        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <button type="button" onClick={autofill} disabled={filling || !brand.trim()}
+            style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "12.5px", fontWeight: 600, color: "var(--ac)", background: "rgba(142,124,242,0.10)", border: "1px solid color-mix(in oklab,var(--ac) 32%,transparent)", borderRadius: "8px", padding: "9px 14px", cursor: filling ? "default" : "pointer", fontFamily: "inherit", opacity: filling || !brand.trim() ? 0.6 : 1 }}>
+            {filling ? "Suggesting…" : "✨ Suggest category & competitors"}
+          </button>
           <button type="button" className="btn-ac" onClick={run} disabled={busy || !brand.trim()}
             style={{ fontSize: "13px", fontWeight: 600, borderRadius: "8px", padding: "10px 20px", border: "none", cursor: busy ? "default" : "pointer", fontFamily: "inherit", opacity: busy || !brand.trim() ? 0.6 : 1 }}>
             {busy ? "Querying live models…" : "Run live scan"}
           </button>
-          <span style={{ fontSize: "11.5px", color: "var(--fnt)" }}>Live Google Gemini calls · ~15–25s</span>
+          <span style={{ fontSize: "11.5px", color: fillErr ? "var(--bad)" : "var(--fnt)" }}>{fillErr ?? "Live Google Gemini calls · ~15–25s"}</span>
         </div>
       </div>
 
