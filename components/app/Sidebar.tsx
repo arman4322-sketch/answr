@@ -35,6 +35,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Monitor",
     items: [
       { icon: "overview", label: "Overview", href: "/app/overview" },
+      { icon: "live", label: "Live Scan", href: "/app/scan", badge: "live" },
       { icon: "insights", label: "Answer Engine Insights", href: "/app/insights" },
       { icon: "citations", label: "Citations", href: "/app/citations", count: "1,284" },
       { icon: "prompts", label: "Prompts", href: "/app/prompts", count: "412" },

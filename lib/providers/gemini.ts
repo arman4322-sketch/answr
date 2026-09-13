@@ -13,7 +13,10 @@ import {
    Key: GEMINI_API_KEY (passed as ?key=). Citations come from groundingMetadata. */
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// Current Flash model recommended by the API for new keys (2.5-flash and older
+// pinned names are deprecated). "gemini-flash-latest" is the auto-updating alias
+// but can transiently 503; the explicit version is steadier. Override with GEMINI_MODEL.
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 export const gemini: AnswerProvider = {
   id: "gemini",
@@ -34,16 +37,45 @@ export const gemini: AnswerProvider = {
     const model = opts.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
     const url = `${BASE}/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
-    const data = (await postJson("gemini", url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }],
-      }),
-      timeoutMs: opts.timeoutMs,
-      signal: opts.signal,
-    })) as GeminiResponse;
+    const call = (grounding: boolean) => {
+      const body: Record<string, unknown> = { contents: [{ parts: [{ text: prompt }] }] };
+      if (grounding) body.tools = [{ google_search: {} }];
+      return postJson("gemini", url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        timeoutMs: opts.timeoutMs,
+        signal: opts.signal,
+      }) as Promise<GeminiResponse>;
+    };
+
+    // Retry transient errors (503 high-demand, 429/5xx) with backoff.
+    const isTransient = (e: unknown) =>
+      /HTTP (429|500|502|503|504)|UNAVAILABLE|high demand|overloaded/i.test(String((e as Error)?.message));
+    const callRetry = async (grounding: boolean): Promise<GeminiResponse> => {
+      let last: unknown;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          return await call(grounding);
+        } catch (e) {
+          last = e;
+          if (!isTransient(e)) throw e;
+          await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+        }
+      }
+      throw last;
+    };
+
+    // Default to grounded (paid keys get citations); free-tier keys reject the
+    // google_search tool (429/403), so fall back to a plain call automatically.
+    const wantGrounding = opts.grounding !== false;
+    let data: GeminiResponse;
+    try {
+      data = await callRetry(wantGrounding);
+    } catch (err) {
+      if (!wantGrounding) throw err;
+      data = await callRetry(false);
+    }
 
     const cand = data.candidates?.[0];
     const text = (cand?.content?.parts ?? []).map((p) => p.text ?? "").join("");

@@ -36,6 +36,9 @@ export interface SampleOptions {
   /** hard timeout for the request (default 30s) */
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** include search grounding (citations). Default true; free-tier keys often
+      can't ground (billing required), so providers fall back to a plain call. */
+  grounding?: boolean;
 }
 
 export interface AnswerProvider {
