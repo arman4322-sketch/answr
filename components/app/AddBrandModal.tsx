@@ -40,6 +40,8 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
   const [category, setCategory] = useState("");
   const [seeds, setSeeds] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestErr, setSuggestErr] = useState<string | null>(null);
   // Portal to <body> so the modal escapes the sidebar's stacking context
   // (the sidebar is position:sticky → its own context would trap this below
   // the main content's charts). Mount guard keeps SSR safe.
@@ -69,6 +71,32 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
 
   const nameBad = error !== null && name.trim() === "";
   const domainBad = error !== null && domain.trim() === "";
+
+  async function suggestCompetitors() {
+    if (name.trim() === "") {
+      setSuggestErr("Add the brand name (and website) first.");
+      return;
+    }
+    setSuggestErr(null);
+    setSuggesting(true);
+    try {
+      const r = await fetch("/api/suggest/competitors", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brand: name.trim(), domain: domain.trim() || undefined, category: category.trim() || undefined }),
+      });
+      const d = (await r.json()) as { ok: boolean; competitors?: string[]; error?: string };
+      if (!d.ok || !d.competitors?.length) {
+        setSuggestErr(d.error || "Couldn't get suggestions.");
+        return;
+      }
+      setSeeds(d.competitors.join(", "));
+    } catch (e) {
+      setSuggestErr((e as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -157,17 +185,32 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
         </div>
 
         <div style={{ marginTop: "12px" }}>
-          <label htmlFor="brand-seeds" style={LABEL}>{"Competitors to track"}</label>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+            <label htmlFor="brand-seeds" style={LABEL}>{"Competitors to track"}</label>
+            <button
+              type="button"
+              onClick={suggestCompetitors}
+              disabled={suggesting}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600,
+                color: "var(--ac)", background: "rgba(142,124,242,0.10)", border: "1px solid color-mix(in oklab,var(--ac) 32%,transparent)",
+                borderRadius: "6px", padding: "4px 9px", cursor: suggesting ? "default" : "pointer", fontFamily: "inherit",
+                opacity: suggesting ? 0.6 : 1,
+              }}
+            >
+              {suggesting ? "Suggesting…" : "✨ Suggest with AI"}
+            </button>
+          </div>
           <textarea
             id="brand-seeds"
             rows={2}
             value={seeds}
             onChange={(e) => setSeeds(e.target.value)}
             placeholder={(LIVE_BRAND.competitorNames ?? []).join(", ")}
-            style={{ ...FIELD, resize: "vertical" }}
+            style={{ ...FIELD, resize: "vertical", marginTop: "5px" }}
           />
-          <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "5px", lineHeight: 1.45 }}>
-            {"Comma-separated seeds — share of voice compares the new brand against these."}
+          <div style={{ fontSize: "11px", color: suggestErr ? "#e5636e" : "var(--fnt)", marginTop: "5px", lineHeight: 1.45 }}>
+            {suggestErr ?? "Comma-separated seeds — share of voice compares the new brand against these. Add the website, then let AI suggest."}
           </div>
         </div>
 
