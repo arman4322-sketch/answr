@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
-import { gemini } from "@/lib/providers/gemini";
+import { answerProviders } from "@/lib/providers/registry";
 import { scoreRuns } from "@/lib/scoring";
 import type { PromptRun, SampledAnswer } from "@/lib/sampler/store";
 
@@ -41,9 +41,10 @@ export async function POST(req: Request) {
   if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
-  if (!gemini.isConfigured()) {
+  const providers = answerProviders();
+  if (providers.length === 0) {
     return NextResponse.json(
-      { ok: false, error: "No LLM key configured. Set GEMINI_API_KEY on the deployment." },
+      { ok: false, error: "No LLM key configured. Add a provider key (e.g. GEMINI_API_KEY or OPENAI_API_KEY) on the deployment." },
       { status: 400 },
     );
   }
@@ -67,36 +68,41 @@ export async function POST(req: Request) {
     : defaultPrompts(brand, category)
   ).slice(0, 8);
 
-  // Query the model live for every prompt, in parallel. One failure doesn't sink the batch.
+  // Query every configured provider for every prompt, in parallel. One failure
+  // (a rate-limited or misconfigured lane) doesn't sink the batch.
   const runs: PromptRun[] = await Promise.all(
     prompts.map(async (prompt, i): Promise<PromptRun> => {
-      const answers: SampledAnswer[] = [];
-      try {
-        const r = await gemini.sample(prompt, { grounding: false, timeoutMs: 30000 });
-        answers.push({ provider: r.provider, model: r.model, text: r.text, citations: r.citations });
-      } catch (e) {
-        answers.push({ provider: "gemini", model: "gemini", text: "", citations: [], error: (e as Error).message });
-      }
+      const answers: SampledAnswer[] = await Promise.all(
+        providers.map(async (p): Promise<SampledAnswer> => {
+          try {
+            const r = await p.sample(prompt, { grounding: false, timeoutMs: 30000 });
+            return { provider: r.provider, model: r.model, text: r.text, citations: r.citations };
+          } catch (e) {
+            return { provider: p.id, model: p.id, text: "", citations: [], error: (e as Error).message };
+          }
+        }),
+      );
       return { id: `scan-${Date.now()}-${i}`, prompt, ts: Date.now(), answers };
     }),
   );
 
   const scores = scoreRuns(runs, { brand, brandDomain: domain, competitors });
 
-  // Per-prompt breakdown for the UI.
+  // Per-prompt breakdown for the UI — combined across every provider's answer.
   const perPrompt = runs.map((run) => {
-    const a = run.answers[0];
-    const text = a?.text ?? "";
+    const ok = run.answers.filter((a) => !a.error && a.text);
+    const combined = ok.map((a) => a.text).join("  ");
+    const firstText = ok[0]?.text ?? "";
     return {
       prompt: run.prompt,
-      error: a?.error ?? null,
-      mentioned: wordIn(text, brand),
-      competitorsMentioned: competitors.filter((c) => wordIn(text, c)),
-      excerpt: text.slice(0, 240).replace(/\s+/g, " ").trim(),
+      error: ok.length === 0 ? (run.answers[0]?.error ?? "no answer") : null,
+      mentioned: wordIn(combined, brand),
+      competitorsMentioned: competitors.filter((c) => wordIn(combined, c)),
+      excerpt: firstText.slice(0, 240).replace(/\s+/g, " ").trim(),
     };
   });
 
-  const answered = runs.filter((r) => r.answers[0]?.text).length;
+  const answered = runs.filter((r) => r.answers.some((a) => a.text)).length;
 
   // Aggregate mention counts for a share-of-voice bar (brand vs each competitor).
   const brandMentions = perPrompt.filter((p) => p.mentioned).length;
@@ -110,8 +116,8 @@ export async function POST(req: Request) {
     brand,
     domain: domain ?? null,
     competitors,
-    model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
-    providersUsed: ["Google Gemini"],
+    model: providers.map((p) => p.label).join(", "),
+    providersUsed: providers.map((p) => p.label),
     ranAt: Date.now(),
     promptsRun: prompts.length,
     promptsAnswered: answered,

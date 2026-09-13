@@ -21,6 +21,23 @@ export function configuredProviders(env: NodeJS.ProcessEnv = process.env): Answe
   return PROVIDERS.filter((p) => p.isConfigured(env));
 }
 
+/** Configured chat/answer lanes (excludes DataForSEO, which is a SERP source
+    rather than a conversational answer engine). Used by the live scan. */
+export function answerProviders(env: NodeJS.ProcessEnv = process.env): AnswerProvider[] {
+  return configuredProviders(env).filter((p) => p.id !== "dataforseo");
+}
+
+/** Pick one configured answer lane for single-call helpers (brand detection,
+    competitor/topic suggestions), preferring the more reliable/paid lanes. */
+export function pickProvider(env: NodeJS.ProcessEnv = process.env): AnswerProvider | null {
+  const preference: ProviderId[] = ["openai", "anthropic", "gemini", "perplexity"];
+  for (const id of preference) {
+    const p = getProvider(id);
+    if (p && p.isConfigured(env)) return p;
+  }
+  return null;
+}
+
 export interface ProviderStatus {
   id: ProviderId;
   label: string;

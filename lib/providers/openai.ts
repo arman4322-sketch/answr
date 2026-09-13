@@ -33,13 +33,28 @@ export const openai: AnswerProvider = {
     if (!key) throw new Error("openai: OPENAI_API_KEY not set");
     const model = opts.model ?? process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
 
-    const data = (await postJson("openai", ENDPOINT, {
-      method: "POST",
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ model, input: prompt, tools: [{ type: "web_search" }] }),
-      timeoutMs: opts.timeoutMs,
-      signal: opts.signal,
-    })) as OpenAiResponse;
+    const call = (grounding: boolean) => {
+      const body: Record<string, unknown> = { model, input: prompt };
+      if (grounding) body.tools = [{ type: "web_search" }];
+      return postJson("openai", ENDPOINT, {
+        method: "POST",
+        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify(body),
+        timeoutMs: opts.timeoutMs,
+        signal: opts.signal,
+      }) as Promise<OpenAiResponse>;
+    };
+
+    // Grounded by default (citations); fall back to a plain call if the key/model
+    // can't use web_search, so the lane still returns an answer.
+    const wantGrounding = opts.grounding !== false;
+    let data: OpenAiResponse;
+    try {
+      data = await call(wantGrounding);
+    } catch (err) {
+      if (!wantGrounding) throw err;
+      data = await call(false);
+    }
 
     const { text, citations } = extract(data);
     return { provider: "openai", model, text, citations, raw: data };

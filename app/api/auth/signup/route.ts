@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { signup, sessionCookie } from "@/lib/auth";
+import { GATE_COOKIE, gateToken } from "@/lib/gate";
 
 /* Real account signup — creates a scrypt-hashed user + workspace in the data
    layer and issues a session cookie. Distinct from the demo passphrase gate. */
@@ -19,5 +20,13 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ ok: true, user: { id: result.user.id, email: result.user.email, name: result.user.name, workspaceId: result.user.workspaceId } });
   res.cookies.set(sessionCookie(result.session.id));
+  // Also grant demo access so the flow reaches /app after onboarding. The auth
+  // session lives in a non-durable store (unreliable across serverless instances
+  // until KV is configured), but the demo gate cookie is validated statelessly —
+  // so signup → onboarding → dashboard works reliably. Real per-user tenancy is
+  // the buyer's build (HANDOFF/LAUNCH_ROADMAP).
+  res.cookies.set(GATE_COOKIE, gateToken(), {
+    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30,
+  });
   return res;
 }

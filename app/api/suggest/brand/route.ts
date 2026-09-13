@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, callerKey } from "@/lib/ratelimit";
-import { gemini } from "@/lib/providers/gemini";
+import { pickProvider } from "@/lib/providers/registry";
 
 /* AI brand detection — given a website URL, identify the brand name, category,
    and a few aliases/owned domains. Powers onboarding step 1. Public (onboarding helper), rate-limited. */
@@ -32,8 +32,9 @@ export async function POST(req: Request) {
   if (!rateLimit(`suggest:${callerKey(req)}`)) {
     return NextResponse.json({ ok: false, error: "Too many requests — try again in a minute." }, { status: 429 });
   }
-  if (!gemini.isConfigured()) {
-    return NextResponse.json({ ok: false, error: "No LLM key configured. Set GEMINI_API_KEY." }, { status: 400 });
+  const provider = pickProvider();
+  if (!provider) {
+    return NextResponse.json({ ok: false, error: "No LLM key configured. Add a provider key (GEMINI_API_KEY or OPENAI_API_KEY)." }, { status: 400 });
   }
 
   let body: Record<string, unknown>;
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
 
   let text = "";
   try {
-    const r = await gemini.sample(prompt, { grounding: false, timeoutMs: 25000 });
+    const r = await provider.sample(prompt, { grounding: false, timeoutMs: 25000 });
     text = r.text;
   } catch (e) {
     // Graceful fallback: still return a domain-derived name so onboarding proceeds.

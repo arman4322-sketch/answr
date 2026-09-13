@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, callerKey } from "@/lib/ratelimit";
-import { gemini } from "@/lib/providers/gemini";
+import { pickProvider } from "@/lib/providers/registry";
 
 /* AI competitor suggestions — given a brand (+ website + category), ask the LLM
    for its main competitors. Powers the "Suggest with AI" button in the
@@ -15,9 +15,10 @@ export async function POST(req: Request) {
   if (!rateLimit(`suggest:${callerKey(req)}`)) {
     return NextResponse.json({ ok: false, error: "Too many requests — try again in a minute." }, { status: 429 });
   }
-  if (!gemini.isConfigured()) {
+  const provider = pickProvider();
+  if (!provider) {
     return NextResponse.json(
-      { ok: false, error: "No LLM key configured. Set GEMINI_API_KEY on the deployment." },
+      { ok: false, error: "No LLM key configured. Add a provider key (GEMINI_API_KEY or OPENAI_API_KEY)." },
       { status: 400 },
     );
   }
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
 
   let text: string;
   try {
-    const r = await gemini.sample(prompt, { grounding: false, timeoutMs: 25000 });
+    const r = await provider.sample(prompt, { grounding: false, timeoutMs: 25000 });
     text = r.text;
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Suggestion failed: ${(e as Error).message}` }, { status: 502 });
