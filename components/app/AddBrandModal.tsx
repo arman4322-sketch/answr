@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "@/lib/toast";
 import { ADD_BRAND_NOTE, LIVE_BRAND } from "@/lib/brands";
 
@@ -39,6 +40,11 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
   const [category, setCategory] = useState("");
   const [seeds, setSeeds] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Portal to <body> so the modal escapes the sidebar's stacking context
+  // (the sidebar is position:sticky → its own context would trap this below
+  // the main content's charts). Mount guard keeps SSR safe.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   /* Fresh form every time it opens. */
   useEffect(() => {
@@ -59,7 +65,7 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const nameBad = error !== null && name.trim() === "";
   const domainBad = error !== null && domain.trim() === "";
@@ -75,9 +81,9 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
     onClose();
   }
 
-  return (
+  return createPortal(
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(5,5,8,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(5,5,8,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
       onClick={onClose}
     >
       <form
@@ -187,6 +193,7 @@ export default function AddBrandModal({ open, onClose }: { open: boolean; onClos
           {"Connecting starts a first scan and a prompt-set draft on live workspaces."}
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
