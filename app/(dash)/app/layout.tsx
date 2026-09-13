@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/app/Sidebar";
+import SampleDataBanner from "@/components/app/SampleDataBanner";
 import Overlays from "@/components/app/Overlays";
 import SmallScreenGate from "@/components/app/SmallScreenGate";
 import Toaster from "@/components/ui/Toaster";
@@ -35,6 +36,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
       <div style={{ display: "flex", background: "var(--bg0)", minHeight: "100vh" }}>
         <Sidebar />
         <main id="main" className="dash-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <SampleDataBanner />
           {children}
         </main>
         <SmallScreenGate />
