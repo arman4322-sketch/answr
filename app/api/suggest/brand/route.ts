@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { rateLimit, callerKey } from "@/lib/ratelimit";
 import { gemini } from "@/lib/providers/gemini";
 
 /* AI brand detection — given a website URL, identify the brand name, category,
-   and a few aliases/owned domains. Powers onboarding step 1. Gated. */
+   and a few aliases/owned domains. Powers onboarding step 1. Public (onboarding helper), rate-limited. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +29,8 @@ function parseJson(text: string): Record<string, unknown> | null {
 }
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
-    return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
+  if (!rateLimit(`suggest:${callerKey(req)}`)) {
+    return NextResponse.json({ ok: false, error: "Too many requests — try again in a minute." }, { status: 429 });
   }
   if (!gemini.isConfigured()) {
     return NextResponse.json({ ok: false, error: "No LLM key configured. Set GEMINI_API_KEY." }, { status: 400 });

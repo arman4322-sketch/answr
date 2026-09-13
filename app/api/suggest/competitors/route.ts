@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { rateLimit, callerKey } from "@/lib/ratelimit";
 import { gemini } from "@/lib/providers/gemini";
 
 /* AI competitor suggestions — given a brand (+ website + category), ask the LLM
    for its main competitors. Powers the "Suggest with AI" button in the
-   Add-a-brand modal. Gated behind the demo cookie so the key isn't burned. */
+   Add-a-brand modal. Public onboarding/modal helper; rate-limited to protect the key. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,9 +12,8 @@ export const dynamic = "force-dynamic";
 const cap = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(0, n) : "");
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
-    return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
+  if (!rateLimit(`suggest:${callerKey(req)}`)) {
+    return NextResponse.json({ ok: false, error: "Too many requests — try again in a minute." }, { status: 429 });
   }
   if (!gemini.isConfigured()) {
     return NextResponse.json(
