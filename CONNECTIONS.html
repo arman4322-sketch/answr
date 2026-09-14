@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Answr — Buyer Connection Checklist</title>
+<style>
+  :root{ --ink:#1f2430; --mut:#5b6170; --faint:#8b90a0; --line:#e3e5ec; --accent:#5a4fd0; --th:#eef0f6; --good:#1f9d6b; --amber:#b9791a; }
+  *{box-sizing:border-box}
+  @page{ size:Letter; margin:0.75in 0.7in; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10.3pt; line-height:1.5; margin:0; }
+  h1{ font-size:24pt; margin:0 0 4pt; letter-spacing:-.5pt; }
+  h2{ font-size:14pt; margin:18pt 0 6pt; padding-bottom:3pt; border-bottom:1.5px solid var(--accent); color:#2a2440; break-after:avoid; }
+  h3{ font-size:11pt; margin:11pt 0 4pt; color:#33384a; break-after:avoid; }
+  p{ margin:0 0 7pt; } ul,ol{ margin:0 0 8pt; padding-left:18px; } li{ margin:0 0 3pt; }
+  code{ font-family:"SF Mono",Consolas,monospace; font-size:8.7pt; background:#f5f5f8; padding:1px 4px; border-radius:3px; }
+  table{ border-collapse:collapse; width:100%; margin:6pt 0 11pt; font-size:8.9pt; break-inside:avoid; }
+  th{ background:var(--th); text-align:left; padding:6px 8px; border:1px solid var(--line); font-weight:700; color:#33384a; }
+  td{ padding:6px 8px; border:1px solid var(--line); vertical-align:top; }
+  td:first-child{ font-weight:600; white-space:nowrap; }
+  .cover{ border-bottom:2px solid var(--accent); padding-bottom:12pt; margin-bottom:8pt; }
+  .badge{ font-size:8pt; letter-spacing:1px; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .lead{ color:var(--mut); font-size:11pt; margin-top:2pt; }
+  .meta{ color:var(--faint); font-size:8.8pt; margin-top:6pt; font-family:"SF Mono",Consolas,monospace; }
+  .note{ background:#f4f2fd; border-left:3px solid var(--accent); padding:8px 12px; border-radius:0 6px 6px 0; font-size:9.3pt; margin:8pt 0; break-inside:avoid; }
+  .warn{ background:#fdf7ee; border-left:3px solid var(--amber); padding:8px 12px; border-radius:0 6px 6px 0; font-size:9.3pt; margin:8pt 0; break-inside:avoid; }
+  .ok{ color:var(--good); font-weight:700; } .later{ color:var(--amber); font-weight:700; }
+  .sec{ break-inside:avoid; }
+  .small{ font-size:8.6pt; color:var(--mut); }
+</style></head>
+<body>
+
+<div class="cover">
+  <span class="badge">Buyer setup · Acquisition handover</span>
+  <h1>Answr — Connection Checklist</h1>
+  <p class="lead">Everything to plug in — API keys, services, and secrets — to take the platform from demo data to a fully active, real-data system.</p>
+  <p class="meta">19 environment variables · 5 AI providers · storage · secrets · email · Last updated 14 Sep 2026</p>
+</div>
+
+<div class="note"><b>How activation works.</b> Every capability turns on the moment its environment variable is set on
+the deployment (Vercel → Project → Settings → Environment Variables → redeploy). Nothing needs a code change.
+The <b>Settings → Integrations</b> page in the app shows each provider as Connected / Not connected and has a
+<b>Test connection</b> button that makes one live call to verify a key.</div>
+
+<div class="sec">
+<h2>1 · Required to activate (foundation)</h2>
+<table>
+  <tr><th>What</th><th>Variable(s)</th><th>What it enables</th><th>Where to get it / cost</th></tr>
+  <tr><td>Hosting</td><td>—</td><td>Deploy the codebase under your own account; connect the <code>useanswr.com</code> domain.</td><td>Vercel (GitHub auto-deploy). Pro plan for commercial use (~$20/mo).</td></tr>
+  <tr><td>Durable storage</td><td><code>KV_REST_API_URL</code><br><code>KV_REST_API_TOKEN</code><br><span class="small">or</span> <code>UPSTASH_REDIS_REST_URL</code><br><code>UPSTASH_REDIS_REST_TOKEN</code></td><td><b>Persistence for everything</b> — user sessions, leads, prompts, actions, crawler telemetry, and the sampler's collected answers. Without it, data lives in memory and resets on restarts.</td><td>Upstash Redis (free tier) or Vercel Marketplace Redis. Copy the REST URL + token.</td></tr>
+  <tr><td>Demo gate passphrase</td><td><code>DEMO_PASSWORD</code></td><td>Rotates the shared demo login (default <code>answr-demo</code>, email <code>dana@nike.com</code>).</td><td>Choose any value. $0.</td></tr>
+  <tr><td>Ingest secret</td><td><code>ANSWR_INGEST_SECRET</code></td><td>Hardens the AI-crawler telemetry endpoints so only your own site can write events.</td><td>Generate a random string. $0.</td></tr>
+  <tr><td>Cron secret</td><td><code>CRON_SECRET</code></td><td><b>Arms the nightly sampler</b> — the scheduled job that runs your prompts across the connected AI models and stores the answers. It refuses to run without this.</td><td>Generate a random string. $0.</td></tr>
+</table>
+</div>
+
+<div class="sec">
+<h2>2 · AI providers — the real numbers</h2>
+<p>At least <b>one</b> is required; each additional provider adds another model to visibility and share-of-voice.
+The platform queries <b>every</b> configured provider automatically.</p>
+<table>
+  <tr><th>Provider</th><th>Variable(s)</th><th>Powers</th><th>Where to get it · cost · notes</th></tr>
+  <tr><td>Google Gemini</td><td><code>GEMINI_API_KEY</code><br><span class="small">optional</span> <code>GEMINI_MODEL</code></td><td>Gemini answer lane; onboarding brand detection; AI competitor/topic suggestions; live scan.</td><td><b>aistudio.google.com</b> → Get API key. Free tier exists but has a <b>daily cap that is per-project</b> — <b>enable billing on the Google Cloud project</b> for reliable use (pennies/day). Default model <code>gemini-3.6-flash</code>.</td></tr>
+  <tr><td>OpenAI (ChatGPT)</td><td><code>OPENAI_API_KEY</code><br><span class="small">optional</span> <code>OPENAI_MODEL</code></td><td>ChatGPT answer lane with web-search citations.</td><td><b>platform.openai.com</b> → API keys → create a <b>project key</b> (<code>sk-proj-…</code>). The org needs billing/credits. Paste keys <b>directly into Vercel</b> — keys exposed in chats/repos get auto-revoked. Default <code>gpt-4o</code>.</td></tr>
+  <tr><td>Anthropic (Claude)</td><td><code>ANTHROPIC_API_KEY</code><br><span class="small">optional</span> <code>ANTHROPIC_MODEL</code></td><td>Claude answer lane; Haiku sentiment classification.</td><td><b>console.anthropic.com</b> → API keys. Usage-based (Haiku is very cheap).</td></tr>
+  <tr><td>Perplexity</td><td><code>PERPLEXITY_API_KEY</code><br><span class="small">optional</span> <code>PERPLEXITY_MODEL</code></td><td>Sonar answer lane with native citations (best citation quality).</td><td><b>perplexity.ai</b> → API. ~$2–5/mo at pilot volume.</td></tr>
+  <tr><td>DataForSEO</td><td><code>DATAFORSEO_LOGIN</code><br><code>DATAFORSEO_PASSWORD</code><br><span class="small">optional</span> <code>DATAFORSEO_LOCATION</code>, <code>DATAFORSEO_LANGUAGE</code></td><td><b>Google AI Overviews</b> (the only official path) + search-demand volume.</td><td><b>dataforseo.com</b> → API credentials. $50 minimum funding, then pay-per-use.</td></tr>
+</table>
+<div class="warn"><b>Recommended minimum for a real-data test:</b> Gemini (with billing enabled) — it alone powers onboarding
+detection, AI suggestions, the live scan, and the sampler. Add OpenAI/Anthropic/Perplexity to compare across models.
+Add DataForSEO only if you want Google AI Overviews coverage.</div>
+</div>
+
+<div class="sec">
+<h2>3 · Email &amp; leads</h2>
+<table>
+  <tr><th>What</th><th>Variable(s)</th><th>What it enables</th><th>Where to get it / cost</th></tr>
+  <tr><td>Resend</td><td><code>RESEND_API_KEY</code><br><code>LEAD_NOTIFY_EMAIL</code><br><code>LEAD_FROM_EMAIL</code></td><td>Emails you each captured lead (demo, snapshot, waitlist forms) and powers transactional email.</td><td><b>resend.com</b> → API key; verify your sending domain. Free tier (~3k emails/mo).</td></tr>
+</table>
+<p class="small">Leads are captured and stored regardless (Settings → Leads); Resend only adds the email notification.</p>
+</div>
+
+<div class="sec">
+<h2>4 · Where real data appears once keys are in — and what still needs a short build</h2>
+<p>Being precise so the test matches expectations:</p>
+<table>
+  <tr><th>Surface</th><th>With keys connected</th></tr>
+  <tr><td>Onboarding (steps 1–3)</td><td><span class="ok">Real</span> — detects the brand from a URL, suggests competitors and a topic set from the live model.</td></tr>
+  <tr><td>Live Scan (<code>/app/scan</code>)</td><td><span class="ok">Real</span> — queries every configured model live; shows genuine visibility, share of voice, ranking, and what each model said.</td></tr>
+  <tr><td>Add-a-brand → Suggest with AI</td><td><span class="ok">Real</span> — AI competitor suggestions.</td></tr>
+  <tr><td>Nightly sampler + scoring</td><td><span class="ok">Real</span> — collects real answers on schedule (needs <code>CRON_SECRET</code> + storage); <code>/api/scoring/preview</code> scores them.</td></tr>
+  <tr><td>Live telemetry (<code>/app/live</code>)</td><td><span class="ok">Real</span> — AI crawlers hitting the site (durable with storage; hardened with the ingest secret).</td></tr>
+  <tr><td>Leads (Settings → Leads)</td><td><span class="ok">Real</span> — captured and stored; emailed with Resend.</td></tr>
+  <tr><td>Main dashboards (Overview / Insights / Citations)</td><td><span class="later">Sample data until a short build</span> — wire the scoring engine's output into these views (the engine exists; see <code>LAUNCH_ROADMAP.md</code> B2). Multi-tenant workspaces and billing (Stripe) are also build items, not keys.</td></tr>
+</table>
+</div>
+
+<div class="sec">
+<h2>5 · Setup order (about an hour)</h2>
+<ol>
+  <li><b>Deploy</b> the repo to your own Vercel account and point <code>useanswr.com</code> at it.</li>
+  <li><b>Add storage</b> — create an Upstash Redis DB, set the two <code>KV_REST_API_*</code> (or <code>UPSTASH_*</code>) vars. Persistence is now on.</li>
+  <li><b>Set the secrets</b> — <code>DEMO_PASSWORD</code>, <code>ANSWR_INGEST_SECRET</code>, <code>CRON_SECRET</code>.</li>
+  <li><b>Add at least one AI key</b> — Gemini with billing enabled is the recommended start. Redeploy.</li>
+  <li><b>Verify</b> — Settings → Integrations → <b>Test connection</b> on each provider (green = live).</li>
+  <li><b>See real numbers</b> — open <code>/app/scan</code>, enter any brand, click <b>Run live scan</b>.</li>
+  <li><b>Add email</b> (Resend) and <b>more providers</b> as desired — each activates on its own.</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>6 · Quick reference — all 19 variables</h2>
+<table>
+  <tr><th>Variable</th><th>Group</th><th>Required?</th></tr>
+  <tr><td>KV_REST_API_URL / KV_REST_API_TOKEN</td><td>Storage</td><td>Yes (or the Upstash pair)</td></tr>
+  <tr><td>UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN</td><td>Storage (alt)</td><td>Alternative to KV pair</td></tr>
+  <tr><td>DEMO_PASSWORD</td><td>Secrets</td><td>Recommended</td></tr>
+  <tr><td>ANSWR_INGEST_SECRET</td><td>Secrets</td><td>Recommended</td></tr>
+  <tr><td>CRON_SECRET</td><td>Secrets</td><td>Yes, for the sampler</td></tr>
+  <tr><td>GEMINI_API_KEY (+ GEMINI_MODEL)</td><td>AI provider</td><td>At least one provider</td></tr>
+  <tr><td>OPENAI_API_KEY (+ OPENAI_MODEL)</td><td>AI provider</td><td>Optional</td></tr>
+  <tr><td>ANTHROPIC_API_KEY (+ ANTHROPIC_MODEL)</td><td>AI provider</td><td>Optional</td></tr>
+  <tr><td>PERPLEXITY_API_KEY (+ PERPLEXITY_MODEL)</td><td>AI provider</td><td>Optional</td></tr>
+  <tr><td>DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD (+ LOCATION, LANGUAGE)</td><td>AI/SERP provider</td><td>Optional (AI Overviews)</td></tr>
+  <tr><td>RESEND_API_KEY / LEAD_NOTIFY_EMAIL / LEAD_FROM_EMAIL</td><td>Email</td><td>Optional</td></tr>
+</table>
+<p class="small">No key is ever committed to the repository; all live in the deployment environment. Full technical
+detail: <code>HANDOFF.md</code> and the Technical Documentation.</p>
+</div>
+
+</body></html>
