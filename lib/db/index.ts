@@ -1,4 +1,5 @@
 import { readKvEnv } from "@/lib/telemetry/kv";
+import { fileList, fileGet, filePut, fileRemove, fileStoreAvailable } from "./filestore";
 
 /* Persistence layer — a small, generic document store that is REAL and testable
    today, on the exact pattern the telemetry store already uses:
@@ -102,13 +103,34 @@ class KvDb implements Db {
   }
 }
 
+/* Local-development store: JSON files under .data/. Unlike MemoryDb this is
+   shared across Next's separate module graphs, so data written by an API route
+   is readable by a server component on the same machine. */
+class FileDb implements Db {
+  kind = "memory" as const; // reported as non-durable; it is dev-only
+  durable = false;
+  async list<T>(collection: string): Promise<T[]> {
+    return fileList<T>(collection);
+  }
+  async get<T>(collection: string, id: string): Promise<T | null> {
+    return fileGet<T>(collection, id);
+  }
+  async put<T extends { id: string }>(collection: string, record: T): Promise<T> {
+    return filePut(collection, record);
+  }
+  async remove(collection: string, id: string): Promise<void> {
+    fileRemove(collection, id);
+  }
+}
+
 let cached: Db | null = null;
 
-/** The active store: durable KV when configured, else in-process memory. */
+/** The active store: durable KV when configured, a local file store in
+    development, else in-process memory. */
 export function db(env: NodeJS.ProcessEnv = process.env): Db {
   if (cached) return cached;
   const creds = readKvEnv(env);
-  cached = creds ? new KvDb(creds) : new MemoryDb();
+  cached = creds ? new KvDb(creds) : fileStoreAvailable(env) ? new FileDb() : new MemoryDb();
   return cached;
 }
 

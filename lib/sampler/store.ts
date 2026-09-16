@@ -1,4 +1,5 @@
 import { readKvEnv } from "@/lib/telemetry/kv";
+import { filePushCapped, fileListCapped, fileStoreAvailable } from "@/lib/db/filestore";
 import type { Citation, ProviderId } from "@/lib/providers/types";
 
 /* Answer store — where the nightly sampler writes the answers it collects.
@@ -87,12 +88,30 @@ class KvAnswerStore implements AnswerStore {
   }
 }
 
+/* Local-development answer store: JSON file under .data/, shared across Next's
+   separate module graphs so the sampler's runs are readable by page renders on
+   the same machine. Production uses KV. */
+class FileAnswerStore implements AnswerStore {
+  kind = "memory" as const; // dev-only; reported as non-durable
+  durable = false;
+  async saveRun(run: PromptRun) {
+    filePushCapped("sampler_runs", run, 2000);
+  }
+  async recentRuns(limit = 50) {
+    return fileListCapped<PromptRun>("sampler_runs", limit);
+  }
+}
+
 let cached: AnswerStore | null = null;
 
-/** Returns the durable KV store when telemetry's KV env is set, else in-memory. */
+/** Durable KV when configured, a local file store in development, else memory. */
 export function answerStore(env: NodeJS.ProcessEnv = process.env): AnswerStore {
   if (cached) return cached;
   const creds = readKvEnv(env);
-  cached = creds ? new KvAnswerStore(creds) : new MemoryAnswerStore();
+  cached = creds
+    ? new KvAnswerStore(creds)
+    : fileStoreAvailable(env)
+      ? new FileAnswerStore()
+      : new MemoryAnswerStore();
   return cached;
 }

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Answr vs SearchVisibility.AI — Capability Comparison</title>
+<style>
+  :root{ --ink:#1c2230; --mut:#545a6a; --faint:#8a90a0; --line:#e2e4ec; --accent:#5a4fd0;
+    --deep:#2a2440; --th:#eef0f7; --good:#1f9d6b; --amber:#b9791a; --no:#b23b3b; --answrbg:#f3f1fb; }
+  *{box-sizing:border-box}
+  @page{ size:Letter; margin:0.7in 0.65in; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10pt; line-height:1.5; margin:0; }
+  .head{ border-bottom:3px solid var(--accent); padding-bottom:14pt; margin-bottom:14pt; }
+  .head .badge{ font-size:8pt; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  h1{ font-size:22pt; font-weight:800; letter-spacing:-.5pt; margin:6pt 0 6pt; color:var(--deep); }
+  .head p{ margin:0; color:var(--mut); font-size:10.5pt; max-width:6.6in; }
+  .head .meta{ font-size:8.5pt; color:var(--faint); margin-top:8pt; }
+  h2{ font-size:12.5pt; color:var(--deep); margin:16pt 0 5pt; font-weight:700; }
+  p{ margin:0 0 7pt; }
+  .legend{ font-size:8.6pt; color:var(--mut); background:#faf9fc; border:1px solid var(--line); border-radius:7px; padding:8px 12px; margin:6pt 0 12pt; }
+  .legend b{ color:var(--ink); }
+  table{ border-collapse:collapse; width:100%; margin:4pt 0 8pt; font-size:9pt; }
+  th{ text-align:left; padding:7px 10px; border-bottom:2px solid var(--line); font-weight:700; color:#33384a; font-size:8.6pt; letter-spacing:.3px; text-transform:uppercase; }
+  th.p{ text-align:center; width:19%; }
+  th.answr{ background:var(--answrbg); color:var(--accent); border-radius:6px 6px 0 0; }
+  td{ padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  td.cap{ font-weight:600; color:var(--ink); }
+  td.p{ text-align:center; font-size:11pt; }
+  td.answr{ background:var(--answrbg); }
+  .grp td{ background:#33384a; color:#fff; font-family:"Helvetica Neue",Arial; font-weight:700; font-size:8.4pt; letter-spacing:.6px; text-transform:uppercase; padding:5px 10px; }
+  .y{ color:var(--good); font-weight:800; } .n{ color:var(--no); font-weight:800; } .pt{ color:var(--amber); font-weight:800; }
+  .note{ font-size:8.3pt; color:var(--mut); }
+  tbody tr,.grp{ break-inside:avoid; }
+  table{ break-inside:auto; } thead{ display:table-header-group; }
+  .box{ border:1px solid var(--line); border-radius:8px; padding:11px 15px; margin:8pt 0; break-inside:avoid; }
+  .box.accent{ border-left:4px solid var(--accent); background:#fbfbfd; }
+  .box.amber{ border-left:4px solid var(--amber); background:#fdf7ee; }
+  .cols{ display:flex; gap:14px; margin:6pt 0; }
+  .col{ flex:1; border:1px solid var(--line); border-radius:8px; overflow:hidden; break-inside:avoid; }
+  .col .h{ padding:8px 12px; font-weight:700; font-size:9.5pt; }
+  .col.a .h{ background:var(--answrbg); color:var(--accent); }
+  .col.s .h{ background:#eef0f7; color:#33384a; }
+  .col ul{ margin:0; padding:9px 12px 10px 26px; } .col li{ margin-bottom:4pt; font-size:9pt; }
+  .small{ font-size:8.4pt; color:var(--faint); }
+</style></head>
+<body>
+
+<div class="head">
+  <div class="badge">Competitive comparison · Confidential</div>
+  <h1>Answr vs. SearchVisibility.AI</h1>
+  <p>A side-by-side capability comparison of the two platforms across every function of an AI-search
+  visibility product — showing where Answr's coverage is broader, and where SearchVisibility.AI leads.</p>
+  <div class="meta">Prepared 11 Sep 2026 · SearchVisibility.AI capabilities per its public site (search-visibility.ai) · Answr per its built feature set</div>
+</div>
+
+<div class="legend">
+  <b>How to read this.</b> This compares <b>built product capabilities</b> feature-by-feature.
+  &nbsp; <span class="y">✓</span> offered &nbsp;·&nbsp; <span class="n">✗</span> not offered &nbsp;·&nbsp;
+  <span class="pt">◑</span> partial / not stated publicly. &nbsp; Answr's features are built into the platform;
+  some activate with the operator's own API keys (see the CIM). SearchVisibility.AI is assessed from its
+  public marketing site.
+</div>
+
+<table>
+  <thead><tr><th>Capability</th><th class="p answr">Answr</th><th class="p">SearchVisibility.AI</th></tr></thead>
+  <tbody>
+
+  <tr class="grp"><td colspan="3">AI answer monitoring — the shared core</td></tr>
+  <tr><td class="cap">Track brand visibility in AI answers</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Share of voice vs. competitors</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Mention rate / appearance frequency</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Ranking / position within the answer</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Sentiment analysis</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Trend / historical tracking</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Auto-generated / smart prompt sets</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Competitor insights</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Analytics dashboard</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+
+  <tr class="grp"><td colspan="3">AI platform coverage</td></tr>
+  <tr><td class="cap">ChatGPT, Claude, Gemini, Perplexity</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Additional chat models (DeepSeek, Grok, Mistral, Llama, Qwen)</td><td class="p answr pt">◑</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Google AI Overviews (SERP AI answers)</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap"><span class="note">Coverage summary: SV tracks 9+ chat models; Answr tracks 5 engines incl. Google AI Overviews, on an extensible provider architecture</span></td><td class="p answr"></td><td class="p"></td></tr>
+
+  <tr class="grp"><td colspan="3">Citations &amp; sources</td></tr>
+  <tr><td class="cap">Source / citation tracking</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Owned vs. earned citation split</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">Watched URLs + new-citation alerts</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">Cited-domains &amp; cited-pages ranking</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+
+  <tr class="grp"><td colspan="3">AI crawler / agent analytics — first-party (Answr-only pillar)</td></tr>
+  <tr><td class="cap">Track AI crawlers hitting your site (GPTBot, ClaudeBot, PerplexityBot…)</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">AI-referred traffic / click analytics</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">robots.txt / llms.txt misconfiguration flagging</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">First-party edge/snippet capture (no JS-execution needed)</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+
+  <tr class="grp"><td colspan="3">Conversations &amp; demand (Answr-only pillar)</td></tr>
+  <tr><td class="cap">Conversation explorer (multi-turn transcripts)</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">Demand / prompt-volume tracking</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+
+  <tr class="grp"><td colspan="3">Segmented insights</td></tr>
+  <tr><td class="cap">By topic &amp; by platform</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">By region / geography</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">By audience / persona</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">Shopping / product-level visibility</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+
+  <tr class="grp"><td colspan="3">Act on it — optimization layer (Answr-only pillar)</td></tr>
+  <tr><td class="cap">Prioritized, impact-scored action queue</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">Workflow automation (trigger → action → notify)</td><td class="p answr y">✓</td><td class="p n">✗</td></tr>
+  <tr><td class="cap">Reports + CSV export engine</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">Optimization guidance / content</td><td class="p answr y">✓</td><td class="p y">✓</td></tr>
+
+  <tr class="grp"><td colspan="3">Platform, commercial &amp; extensibility</td></tr>
+  <tr><td class="cap">Agency / white-label / reseller model</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">Enterprise: SSO/SAML, data residency</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">API / MCP access</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">Multi-brand / multi-workspace</td><td class="p answr y">✓</td><td class="p pt">◑</td></tr>
+  <tr><td class="cap">Free checker / free trial (lead-gen)</td><td class="p answr n">✗</td><td class="p y">✓</td></tr>
+  <tr><td class="cap">Real-time answer monitoring</td><td class="p answr pt">◑</td><td class="p y">✓</td></tr>
+
+  </tbody>
+</table>
+<p class="note">◑ notes: Answr's "additional chat models" and real-time answer monitoring — Answr's answer sampling
+runs on a scheduled (daily) basis and targets 5 engines today, though its provider architecture is built to add
+more models; its AI-crawler telemetry <em>is</em> real-time. SearchVisibility.AI ◑ rows (owned-vs-earned, exports,
+agency, enterprise, API, multi-brand) are capabilities not stated on its public site — a buyer should confirm.</p>
+
+<h2>What Answr offers that SearchVisibility.AI does not</h2>
+<div class="cols">
+  <div class="col a">
+    <div class="h">Answr's advantages</div>
+    <ul>
+      <li><b>A whole AI-crawler analytics pillar</b> — see the AI bots crawling your site and the traffic they refer, which pure answer-monitoring tools can't.</li>
+      <li><b>An action &amp; workflow layer</b> — turns findings into a prioritized, impact-scored to-do queue with automation, not just dashboards.</li>
+      <li><b>Conversations &amp; demand</b> — multi-turn conversation explorer and prompt-volume/demand tracking.</li>
+      <li><b>Google AI Overviews coverage</b> — the SERP AI surface SV doesn't track.</li>
+      <li><b>Deeper citations</b> — owned-vs-earned split, watched URLs, and new-citation alerts.</li>
+      <li><b>Segmented insights</b> — by region, audience, and shopping/product, not just topic/platform.</li>
+      <li><b>Agency, enterprise &amp; API layers</b> — white-label/reseller, SSO/residency, and API/MCP designed in.</li>
+      <li><b>Reporting engine</b> — a real CSV export/report system across the product.</li>
+    </ul>
+  </div>
+  <div class="col s">
+    <div class="h">Where SearchVisibility.AI leads</div>
+    <ul>
+      <li><b>Broader raw model coverage</b> — 9+ chat models (adds DeepSeek, Grok, Mistral, Llama, Qwen).</li>
+      <li><b>A live, operating product</b> — in market today with a free 14-day trial and existing users.</li>
+      <li><b>Free AI-visibility checker</b> — a self-serve, lead-generating on-ramp.</li>
+      <li><b>Real-time answer monitoring</b> — continuous rather than scheduled sampling.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="box accent">
+  <p style="margin:0"><b>The one-line takeaway.</b> SearchVisibility.AI is a focused, live <em>answer-monitoring</em> tool
+  with wide model coverage. Answr is a <b>broader, full-stack AI-visibility platform</b> — it does the same
+  monitoring <em>and</em> adds crawler analytics, an action/workflow layer, demand, and deeper segmentation that a
+  single-purpose tracker doesn't have. For a buyer, Answr is the more complete product to own and grow.</p>
+</div>
+
+<div class="box amber">
+  <p style="margin:0" class="small"><b>Fair-comparison note.</b> SearchVisibility.AI is a live product with paying users
+  and broader model coverage today; Answr is offered pre-launch (its analytics run on demonstration data and
+  activate with the operator's API keys — see the CIM). This chart compares <b>product capability and feature
+  scope</b>, which is Answr's genuine strength. Model breadth (SV's strength) is an area a new owner can extend,
+  since Answr's provider architecture is built to add models. All SearchVisibility.AI entries are drawn from its
+  public site as of Sept 2026 and should be re-verified.</p>
+</div>
+
+</body></html>

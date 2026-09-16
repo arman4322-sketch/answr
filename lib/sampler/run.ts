@@ -2,6 +2,7 @@ import { configuredProviders } from "@/lib/providers/registry";
 import type { AnswerProvider } from "@/lib/providers/types";
 import { answerStore, type PromptRun, type SampledAnswer } from "./store";
 import { listPrompts } from "@/lib/db/entities";
+import { getWorkspace } from "@/lib/workspace";
 
 /* The nightly sampler — the core of "the engine". Given a set of prompts, it
    runs each configured provider against each prompt, normalizes the answers +
@@ -17,15 +18,9 @@ import { listPrompts } from "@/lib/db/entities";
    database. Until that exists, callers pass prompts explicitly; a small default
    set lets a buyer smoke-test the pipeline the moment they add a key. */
 
-export const DEFAULT_PROMPTS: string[] = [
-  "What are the best running shoes for marathon training?",
-  "Which brands make the most sustainable athletic wear?",
-  "Best basketball shoes for outdoor courts?",
-];
-
 export interface SamplerReport {
   ok: boolean;
-  reason?: "no-providers";
+  reason?: "no-providers" | "no-workspace";
   startedAt: number;
   finishedAt: number;
   providers: string[];
@@ -62,12 +57,21 @@ export async function runSampler(opts: RunSamplerOptions = {}): Promise<SamplerR
     return { ...base, ok: false, reason: "no-providers", finishedAt: startedAt };
   }
 
-  // Prompt source priority: explicit arg → the user's tracked prompts (persisted
-  // via /api/prompts) → the built-in smoke-test set.
+  // Prompt source priority: explicit arg → the configured workspace's tracked
+  // prompt set → prompts persisted via /api/prompts. With no workspace the
+  // sampler does nothing: it must never invent a brand to track.
   let prompts = opts.prompts?.length ? opts.prompts : [];
   if (prompts.length === 0) {
-    const tracked = await listPrompts("demo").catch(() => []);
-    prompts = tracked.length ? tracked.map((p) => p.text) : DEFAULT_PROMPTS;
+    const ws = await getWorkspace().catch(() => null);
+    if (ws?.prompts.length) {
+      prompts = ws.prompts;
+    } else {
+      const tracked = await listPrompts(ws?.id ?? "active").catch(() => []);
+      prompts = tracked.map((p) => p.text);
+    }
+  }
+  if (prompts.length === 0) {
+    return { ...base, ok: false, reason: "no-workspace", finishedAt: startedAt };
   }
   let answers = 0;
   let errors = 0;
