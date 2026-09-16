@@ -4,6 +4,9 @@ import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
 import { answerProviders } from "@/lib/providers/registry";
 import { scoreRuns } from "@/lib/scoring";
 import type { PromptRun, SampledAnswer } from "@/lib/sampler/store";
+import { resolveIdentity, domainIdentity, identitySummary, hostOf } from "@/lib/brand/identity";
+import { mentionsBrand } from "@/lib/brand/match";
+import { getWorkspace } from "@/lib/workspace";
 
 /* Live scan — the real-numbers demo endpoint. Given a brand + competitors, it
    queries the connected LLM(s) live for a set of prompts, then runs the real
@@ -12,11 +15,20 @@ import type { PromptRun, SampledAnswer } from "@/lib/sampler/store";
 
    Free-tier Gemini can't ground (no citations), so we call without grounding;
    the core visibility metrics don't need it. Gated behind the demo cookie so
-   the API key isn't burned by anonymous traffic. */
+   the API key isn't burned by anonymous traffic.
+
+   Like the dashboard, this counts mentions of the ENTITY, not of the name. A
+   scan given a website resolves that brand's identity first, so scanning a
+   brand whose name is shared does not report the other company's visibility as
+   this one's — and so the scan and the dashboard cannot disagree about the same
+   brand. Without a website there is nothing to disambiguate against, and it
+   falls back to matching the name. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Resolving the brand's identity reads its website and makes one model call
+// before any sampling starts.
+export const maxDuration = 120;
 
 const cap = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(0, n) : "");
 const wordIn = (text: string, name: string) => {
@@ -68,6 +80,30 @@ export async function POST(req: Request) {
     : defaultPrompts(brand, category)
   ).slice(0, 8);
 
+  /* Work out who this brand is, alongside the sampling rather than before it.
+     The identity is not needed until the answers are scored, and resolving it
+     takes about as long as the sample does, so running them concurrently costs
+     almost nothing in wall-clock time. Doing it any other way tempts you to
+     skip the collision search, and a scan that skips it reports a shared name's
+     visibility as this brand's — which is the exact bug this is here to stop. */
+  const identityPromise: Promise<ReturnType<typeof domainIdentity>> = (async () => {
+    if (!domain) {
+      return domainIdentity(brand, "", "No website given, so mentions are matched on the name alone.");
+    }
+    // Scanning the brand this deployment already tracks? Reuse its stored
+    // profile: it is better evidenced than anything a single call can produce,
+    // and it keeps the scan and the dashboard reporting the same number.
+    const ws = await getWorkspace().catch(() => null);
+    if (
+      ws?.identity &&
+      ws.brand.toLowerCase() === brand.toLowerCase() &&
+      ws.identity.domain === hostOf(domain)
+    ) {
+      return ws.identity;
+    }
+    return resolveIdentity({ name: brand, url: domain, category });
+  })();
+
   // Query every configured provider for every prompt, in parallel. One failure
   // (a rate-limited or misconfigured lane) doesn't sink the batch.
   const runs: PromptRun[] = await Promise.all(
@@ -86,19 +122,22 @@ export async function POST(req: Request) {
     }),
   );
 
-  const scores = scoreRuns(runs, { brand, brandDomain: domain, competitors });
+  const identity = await identityPromise;
+  const isBrand = (_runId: string, a: SampledAnswer) => mentionsBrand(a.text, a.citations, identity);
+  const scores = scoreRuns(runs, { brand, brandDomain: domain, competitors, brandMatch: isBrand });
 
   // Per-prompt breakdown for the UI — combined across every provider's answer.
   const perPrompt = runs.map((run) => {
     const ok = run.answers.filter((a) => !a.error && a.text);
+    const onBrand = ok.filter((a) => isBrand(run.id, a));
     const combined = ok.map((a) => a.text).join("  ");
-    const firstText = ok[0]?.text ?? "";
     return {
       prompt: run.prompt,
       error: ok.length === 0 ? (run.answers[0]?.error ?? "no answer") : null,
-      mentioned: wordIn(combined, brand),
+      mentioned: onBrand.length > 0,
       competitorsMentioned: competitors.filter((c) => wordIn(combined, c)),
-      excerpt: firstText.slice(0, 240).replace(/\s+/g, " ").trim(),
+      // Quote an answer that is actually about this brand where one exists.
+      excerpt: ((onBrand[0] ?? ok[0])?.text ?? "").slice(0, 240).replace(/\s+/g, " ").trim(),
     };
   });
 
@@ -126,5 +165,16 @@ export async function POST(req: Request) {
     brandMentions,
     competitorMentions,
     perPrompt,
+    // Who these numbers are about, and how many answers named the brand while
+    // describing somebody else.
+    identity: {
+      name: identity.name,
+      domain: identity.domain,
+      description: identity.description,
+      ambiguous: identity.ambiguous,
+      conflicts: identity.conflicts,
+      summary: identitySummary(identity),
+    },
+    nameCollisions: scores.nameCollisions,
   });
 }
