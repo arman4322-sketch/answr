@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { runSampler } from "@/lib/sampler/run";
-import { runEntityVerification } from "@/lib/live/entity";
-import { runClassification } from "@/lib/live/classify";
+import { startJob, stepJob } from "@/lib/sampler/job";
 import { anyProviderConfigured, providerStatuses } from "@/lib/providers/registry";
 import { isWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* Sampler trigger — the endpoint Vercel Cron (or a manual call) hits to run the
-   nightly answer sample. See lib/sampler/run.ts and vercel.json.
+   nightly answer sample. See lib/sampler/job.ts and vercel.json.
 
    The nightly pass is the whole pipeline, not just the sample, so a deployment
    left alone keeps producing complete numbers:
@@ -36,7 +34,16 @@ import { isWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // Three stages across every configured lane; the sample alone can take minutes.
-export const maxDuration = 800;
+// Vercel caps a serverless function at 300s on the Hobby plan, and a value
+// above the plan limit fails the DEPLOY, not the build — the build succeeds and
+// then "Deploying outputs" errors with invalid_max_duration. 300 is the ceiling
+// here; anything that needs longer has to be stepped across requests (see
+// lib/sampler/job.ts and /api/runs/step), not given a bigger timeout.
+export const maxDuration = 300;
+
+/* Stop stepping with room to spare so the response is actually returned rather
+   than the function being killed holding an unreported result. */
+const BUDGET_MS = 240_000;
 
 function readSecret(): string | undefined {
   return (process.env.CRON_SECRET ?? process.env.ANSWR_INGEST_SECRET)?.trim() || undefined;
@@ -67,19 +74,55 @@ async function handle(req: Request) {
     return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
 
-  // Resolve the tenant once; all three stages operate on the SAME workspace.
+  // Resolve the tenant once; every step operates on the SAME workspace.
   const named = new URL(req.url).searchParams.get("workspaceId");
   const workspaceId = isWorkspaceId(named) ? named : DEMO_WORKSPACE_ID;
 
-  const report = await runSampler({ workspaceId });
-  if (!report.ok) return NextResponse.json({ ...report, workspaceId });
+  /* Drive the stepped job engine against a clock rather than running the whole
+     pass in one call. A full pass is prompts x lanes plus two enrichment
+     stages, which on this plan's 300s ceiling would simply be killed part way
+     through, losing the enrichment and leaving no record of how far it got.
+     Stepping means each unit of work is committed as it completes, and an
+     invocation that runs out of time returns an honest partial report. */
+  const started = await startJob(workspaceId);
+  if (!started.ok) {
+    return NextResponse.json({ ok: false, workspaceId, reason: "cannot-start", error: started.error }, { status: 400 });
+  }
 
-  // Enrich what was just collected. Failures here must not lose the sample, so
-  // each stage is reported separately rather than allowed to throw.
-  const entity = await runEntityVerification({ workspaceId }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
-  const classified = await runClassification({ workspaceId }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+  const deadline = Date.now() + BUDGET_MS;
+  let job = started.job;
+  let done = job.status !== "running";
+  let steps = 0;
+  let error: string | undefined;
 
-  return NextResponse.json({ ...report, workspaceId, entity, classified });
+  while (!done && Date.now() < deadline) {
+    const result = await stepJob(workspaceId, job.id);
+    steps += 1;
+    if (!result.ok) {
+      error = result.error;
+      if (result.job) job = result.job;
+      break;
+    }
+    job = result.job;
+    done = result.done;
+  }
+
+  return NextResponse.json({
+    ok: !error,
+    workspaceId,
+    steps,
+    complete: done,
+    job,
+    ...(error ? { error } : {}),
+    ...(done
+      ? {}
+      : {
+          note:
+            "Ran out of time before finishing. Each completed step is saved, so the next scheduled run " +
+            "continues from here, and opening the dashboard finishes it immediately. A pass that will not " +
+            "fit in one invocation needs either fewer tracked prompts or a plan with a longer function timeout.",
+        }),
+  });
 }
 
 // Vercel Cron issues GET; manual triggers may POST.

@@ -33,7 +33,12 @@ import type { SegmentKind } from "@/lib/segments/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 800;
+// Vercel caps a serverless function at 300s on the Hobby plan, and a value
+// above the plan limit fails the DEPLOY, not the build — the build succeeds and
+// then "Deploying outputs" errors with invalid_max_duration. 300 is the ceiling
+// here; anything that needs longer has to be stepped across requests (see
+// lib/sampler/job.ts and /api/runs/step), not given a bigger timeout.
+export const maxDuration = 300;
 
 function secret(): string | undefined {
   return (process.env.CRON_SECRET ?? process.env.ANSWR_INGEST_SECRET)?.trim() || undefined;
