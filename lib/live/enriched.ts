@@ -91,12 +91,15 @@ const emptySplit: SentimentSplit = {
 };
 
 export async function getEnrichedMetrics(): Promise<EnrichedMetrics> {
-  const [workspace, runs, sentiment, topics] = await Promise.all([
+  const [workspace, stored, sentiment, topics] = await Promise.all([
     getWorkspace(),
-    answerStore().recentRuns(500),
+    answerStore().recentRuns(2000),
     listSentiment(),
     listPromptTopics(),
   ]);
+  // Topic visibility is the overall figure, so segmented runs stay out of it —
+  // they are the same prompts asked deliberately differently.
+  const runs = stored.filter((r) => !r.segment);
 
   const empty: EnrichedMetrics = {
     configured: !!workspace,

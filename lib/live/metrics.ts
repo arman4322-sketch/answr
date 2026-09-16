@@ -176,12 +176,18 @@ function emptyMetrics(workspace: Workspace | null, telemetry: Awaited<ReturnType
 }
 
 /** Compute every dashboard metric from real sampled runs. */
-export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
-  const [workspace, runs, telemetry] = await Promise.all([
+export async function getLiveMetrics(limit = 2000): Promise<LiveMetrics> {
+  const [workspace, stored, telemetry] = await Promise.all([
     getWorkspace(),
     answerStore().recentRuns(limit),
     Promise.resolve(summarize()),
   ]);
+
+  // Headline metrics are the OVERALL picture, so they exclude segmented runs.
+  // A regional or persona-framed run asks a deliberately different question;
+  // folding those in would let "how do we look in Japan" move the number that
+  // is supposed to mean "how do we look".
+  const runs = stored.filter((r) => !r.segment);
 
   if (!workspace || runs.length === 0) return emptyMetrics(workspace, telemetry);
 

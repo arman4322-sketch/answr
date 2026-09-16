@@ -213,7 +213,9 @@ export async function runEntityVerification(opts: { limit?: number } = {}): Prom
   const provider = pickProvider();
   if (!provider) return { ...base, reason: "no-provider" };
 
-  const runs: PromptRun[] = await answerStore().recentRuns(opts.limit ?? 500);
+  // Every run, segmented or not: a verdict is about one answer, and the
+  // regional and audience screens need theirs judged too.
+  const runs: PromptRun[] = await answerStore().recentRuns(opts.limit ?? 2000);
   if (runs.length === 0) return { ...base, reason: "no-answers", provider: provider.id };
 
   const existing = await listEntityVerdicts();

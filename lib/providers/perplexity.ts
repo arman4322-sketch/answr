@@ -23,6 +23,7 @@ export const perplexity: AnswerProvider = {
   powers: ["visibility_score", "share_of_voice", "platform_appearances", "avg_answer_position", "citations_count"],
   docsUrl: "https://docs.perplexity.ai/getting-started/pricing",
   pilotCost: "~$2–5/mo",
+  supportsLocation: true,
 
   isConfigured(env = process.env) {
     return !!envVar("PERPLEXITY_API_KEY", env);
@@ -33,10 +34,24 @@ export const perplexity: AnswerProvider = {
     if (!key) throw new Error("perplexity: PERPLEXITY_API_KEY not set");
     const model = opts.model ?? process.env.PERPLEXITY_MODEL ?? DEFAULT_MODEL;
 
+    const body: Record<string, unknown> = { model, messages: [{ role: "user", content: prompt }] };
+    // Sonar searches from the given location, so a regional run really is run
+    // from that region rather than merely told about it.
+    const loc = opts.userLocation;
+    if (loc?.country) {
+      body.web_search_options = {
+        user_location: {
+          country: loc.country,
+          ...(loc.city ? { city: loc.city } : {}),
+          ...(loc.region ? { region: loc.region } : {}),
+        },
+      };
+    }
+
     const data = (await postJson("perplexity", ENDPOINT, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify(body),
       timeoutMs: opts.timeoutMs,
       signal: opts.signal,
     })) as {

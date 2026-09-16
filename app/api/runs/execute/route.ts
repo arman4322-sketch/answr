@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import { runSampler } from "@/lib/sampler/run";
+import { runEntityVerification } from "@/lib/live/entity";
+import { runClassification } from "@/lib/live/classify";
 import { anyProviderConfigured, providerStatuses } from "@/lib/providers/registry";
 
 /* Sampler trigger — the endpoint Vercel Cron (or a manual call) hits to run the
    nightly answer sample. See lib/sampler/run.ts and vercel.json.
+
+   The nightly pass is the whole pipeline, not just the sample, so a deployment
+   left alone keeps producing complete numbers:
+
+     1. sample       ask every configured lane the tracked prompts
+     2. verify       for a shared brand name, decide which company each new
+                     answer is about (no-ops when the name is not shared)
+     3. classify     sentiment + topics over what survived
+
+   Stages 2 and 3 are idempotent and only touch answers that are new, so the
+   nightly cost is a few cents beyond the sample itself.
 
    Safety: this can spend real provider credits, so it only runs when a secret is
    configured AND presented. Set CRON_SECRET (Vercel Cron sends it automatically
@@ -13,6 +26,8 @@ import { anyProviderConfigured, providerStatuses } from "@/lib/providers/registr
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Three stages across every configured lane; the sample alone can take minutes.
+export const maxDuration = 800;
 
 function readSecret(): string | undefined {
   return (process.env.CRON_SECRET ?? process.env.ANSWR_INGEST_SECRET)?.trim() || undefined;
@@ -44,7 +59,14 @@ async function handle(req: Request) {
   }
 
   const report = await runSampler();
-  return NextResponse.json(report, { status: report.ok ? 200 : 200 });
+  if (!report.ok) return NextResponse.json(report);
+
+  // Enrich what was just collected. Failures here must not lose the sample, so
+  // each stage is reported separately rather than allowed to throw.
+  const entity = await runEntityVerification().catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+  const classified = await runClassification().catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+
+  return NextResponse.json({ ...report, entity, classified });
 }
 
 // Vercel Cron issues GET; manual triggers may POST.

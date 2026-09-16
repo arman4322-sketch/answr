@@ -23,6 +23,7 @@ export const dataforseo: AnswerProvider = {
   powers: ["shopping_visibility", "region_visibility", "demand_volume", "citations_count"],
   docsUrl: "https://dataforseo.com/apis/serp-api",
   pilotCost: "$50 min funding, then usage",
+  supportsLocation: true,
 
   isConfigured(env = process.env) {
     return !!envVar("DATAFORSEO_LOGIN", env) && !!envVar("DATAFORSEO_PASSWORD", env);
@@ -40,8 +41,11 @@ export const dataforseo: AnswerProvider = {
       body: JSON.stringify([
         {
           keyword: prompt,
-          language_code: process.env.DATAFORSEO_LANGUAGE ?? "en",
-          location_code: Number(process.env.DATAFORSEO_LOCATION ?? 2840), // 2840 = United States
+          // A regional run overrides the deployment default; AI Overviews are
+          // genuinely per-location, which is the whole point of the lane.
+          language_code: opts.userLocation?.language ?? process.env.DATAFORSEO_LANGUAGE ?? "en",
+          location_code:
+            opts.userLocation?.locationCode ?? Number(process.env.DATAFORSEO_LOCATION ?? 2840), // 2840 = United States
           load_async_ai_overview: true,
         },
       ]),

@@ -30,6 +30,28 @@ export interface SampleResult {
   raw?: unknown;
 }
 
+/** Where the question is being asked from.
+ *
+ *  Answer engines localise: the same prompt returns different brands in Sydney
+ *  and in Chicago. Lanes whose API accepts a searcher location take this
+ *  natively; the rest never see it (the sampler frames the prompt instead), so
+ *  a located result is always either genuinely located or labelled as not. */
+export interface UserLocation {
+  /** ISO-3166-1 alpha-2, e.g. "US" */
+  country: string;
+  city?: string;
+  /** state / province / administrative area */
+  region?: string;
+  /** ISO-639-1, e.g. "en" */
+  language?: string;
+  /** IANA timezone, e.g. "America/New_York" */
+  timezone?: string;
+  /** DataForSEO numeric location code, e.g. 2840 for the United States */
+  locationCode?: number;
+  /** human-readable name, e.g. "United States" */
+  label?: string;
+}
+
 export interface SampleOptions {
   /** override the provider's default model */
   model?: string;
@@ -39,6 +61,8 @@ export interface SampleOptions {
   /** include search grounding (citations). Default true; free-tier keys often
       can't ground (billing required), so providers fall back to a plain call. */
   grounding?: boolean;
+  /** search from this location. Only honoured by lanes with supportsLocation. */
+  userLocation?: UserLocation;
 }
 
 export interface AnswerProvider {
@@ -54,6 +78,13 @@ export interface AnswerProvider {
   docsUrl: string;
   /** rough pilot-scale cost, for the Integrations UI */
   pilotCost: string;
+  /**
+   * True when this lane's API accepts a searcher location, so a regional
+   * sample is genuinely run from that region. False lanes are sampled with the
+   * location stated in the prompt instead, which the sampler records as such —
+   * the two are not the same measurement and are never reported as if they were.
+   */
+  supportsLocation?: boolean;
   /** true when the required env var(s) are present and non-empty */
   isConfigured(env?: NodeJS.ProcessEnv): boolean;
   /** run one prompt. Throws ProviderError if not configured or on API failure. */

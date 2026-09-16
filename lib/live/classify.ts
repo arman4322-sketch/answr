@@ -101,7 +101,11 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
   const workspace = await getWorkspace();
   if (!workspace) return { ...base, reason: "no-workspace" };
 
-  const runs: PromptRun[] = await answerStore().recentRuns(opts.limit ?? 500);
+  // Sentiment and topics describe the overall picture, so segmented runs are
+  // left out: a persona-framed answer says how the brand reads TO THAT BUYER,
+  // which belongs on the Audiences screen, not in the headline split.
+  const stored = await answerStore().recentRuns(opts.limit ?? 2000);
+  const runs: PromptRun[] = stored.filter((r) => !r.segment);
   if (runs.length === 0) return { ...base, reason: "no-answers", provider: provider.id };
 
   const brand = workspace.brand;

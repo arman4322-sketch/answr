@@ -1,6 +1,7 @@
 import { readKvEnv } from "@/lib/telemetry/kv";
 import { filePushCapped, fileListCapped, fileStoreAvailable } from "@/lib/db/filestore";
 import type { Citation, ProviderId } from "@/lib/providers/types";
+import type { SegmentTag } from "@/lib/segments/types";
 
 /* Answer store — where the nightly sampler writes the answers it collects.
    Mirrors lib/telemetry's design exactly: a durable Upstash/Redis store that
@@ -18,6 +19,14 @@ export interface SampledAnswer {
   text: string;
   citations: Citation[];
   error?: string;
+  /**
+   * For a segmented run, how the segment reached THIS lane:
+   *   native — the API took it (a search actually run from that location)
+   *   prompt — it was stated in the question instead
+   * The two are not the same measurement, so the UI reports the split rather
+   * than averaging them together.
+   */
+  applied?: "native" | "prompt";
 }
 
 export interface PromptRun {
@@ -25,6 +34,12 @@ export interface PromptRun {
   prompt: string;
   ts: number;
   answers: SampledAnswer[];
+  /**
+   * The slice this run was sampled under — a region the question was asked
+   * from, or an audience whose framing it carried. Absent on the nightly
+   * overall run, which is what every headline metric is computed from.
+   */
+  segment?: SegmentTag;
 }
 
 export interface AnswerStore {
@@ -34,7 +49,9 @@ export interface AnswerStore {
   recentRuns(limit?: number): Promise<PromptRun[]>;
 }
 
-const MAX_RUNS = 500;
+// Segmented runs share this list with the nightly overall run, so the cap has
+// to hold several passes of both without evicting the overall history.
+const MAX_RUNS = 2000;
 const KEY_RUNS = "answr:sampler:runs";
 
 class MemoryAnswerStore implements AnswerStore {
