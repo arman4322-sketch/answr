@@ -24,11 +24,11 @@ export default function ExportButton({
   rows,
   report,
   module: moduleName,
-  brand = "Nike",
+  brand = "Your brand",
   window: windowLabel = "Last 30 days (vs previous 30 days)",
 }: {
   label?: string;
-  /** e.g. "nike-citations-30d.csv" */
+  /** e.g. `${slug}-citations-30d.csv` — derived from the live brand */
   filename: string;
   /** single table (header row first) — wrapped in the executive envelope */
   rows?: string[][];

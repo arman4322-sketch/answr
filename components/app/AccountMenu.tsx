@@ -1,28 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useSelectedBrand } from "@/lib/brands";
-import { toast } from "@/lib/toast";
+import type { BrandIdentity } from "@/lib/brands";
 
 /* Account row + menu — NAVIGATION.md: the bottom row absorbs Settings, so there
    is no standalone Settings nav item. Menu contents per spec: the user's email
    (non-interactive), Brand settings (showing the current brand as its value),
-   Workspace & members, Plan & billing, Notifications, Log out. */
+   Workspace & members, Plan & billing, Notifications, Log out.
+
+   Both the signed-in account and the tracked brand are real: the dashboard
+   layout resolves the session (lib/auth) and the workspace (lib/live/metrics)
+   server-side and passes them in. There is no stand-in person and no stand-in
+   brand — when access came from the demo passphrase rather than an account, the
+   row says exactly that, and an unconfigured workspace reads "Not configured". */
 
 const PANEL_W = 236;
 
-const USER = { name: "Dana Okafor", email: "dana@nike.com", initials: "DO" };
+/** The signed-in account, when there is one. */
+export type AccountUser = { name: string; email: string };
 
-export default function AccountMenu({ collapsed = false }: { collapsed?: boolean }) {
-  const router = useRouter();
-  const brand = useSelectedBrand();
+/** Initials for the avatar — first letters of the name, at most two. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((p) => p.match(/[\p{L}\p{N}]/u)?.[0] ?? "");
+  const joined = letters.join("").toUpperCase();
+  return joined || "·";
+}
+
+export default function AccountMenu({
+  collapsed = false,
+  brand = null,
+  user,
+}: {
+  collapsed?: boolean;
+  brand?: BrandIdentity | null;
+  user?: AccountUser;
+}) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [trigHover, setTrigHover] = useState(false);
+
+  /* No account session means access came from the demo passphrase gate. Say so
+     rather than printing a person who does not exist. */
+  const displayName = user?.name ?? "Demo access";
+  const displayEmail = user?.email ?? "Signed in with the demo passphrase";
+  const displayInitials = user ? initialsOf(user.name) : "··";
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +88,7 @@ export default function AccountMenu({ collapsed = false }: { collapsed?: boolean
   }
 
   const ITEMS: { key: string; label: string; value?: string; href?: string; onClick?: () => void }[] = [
-    { key: "brand", label: "Brand settings", value: brand.name, href: "/app/settings" },
+    { key: "brand", label: "Brand settings", value: brand?.name ?? "Not configured", href: "/app/settings" },
     { key: "workspace", label: "Workspace & members", href: "/app/settings/workspace" },
     { key: "billing", label: "Plan & billing", href: "/app/settings/billing" },
     { key: "notifications", label: "Notifications", href: "/app/settings/alerts" },
@@ -103,8 +128,8 @@ export default function AccountMenu({ collapsed = false }: { collapsed?: boolean
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account: ${USER.name}. Open account menu`}
-        title={collapsed ? USER.name : undefined}
+        aria-label={`Account: ${displayName}. Open account menu`}
+        title={collapsed ? displayName : undefined}
         onMouseEnter={() => setTrigHover(true)}
         onMouseLeave={() => setTrigHover(false)}
         onFocus={() => setTrigHover(true)}
@@ -143,11 +168,11 @@ export default function AccountMenu({ collapsed = false }: { collapsed?: boolean
             color: "var(--mut)",
           }}
         >
-          {USER.initials}
+          {displayInitials}
         </span>
         {!collapsed && (
           <>
-            <span style={{ fontSize: "12.5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{USER.name}</span>
+            <span style={{ fontSize: "12.5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{displayName}</span>
             <span style={{ marginLeft: "auto", color: "var(--fnt)", fontSize: "10px", flex: "none" }}>{open ? "▾" : "▴"}</span>
           </>
         )}
@@ -173,8 +198,8 @@ export default function AccountMenu({ collapsed = false }: { collapsed?: boolean
             }}
           >
             <div style={{ padding: "7px 10px 9px", borderBottom: "1px solid var(--brd)", marginBottom: "5px" }}>
-              <div style={{ fontSize: "12.5px", fontWeight: 500 }}>{USER.name}</div>
-              <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "1px" }}>{USER.email}</div>
+              <div style={{ fontSize: "12.5px", fontWeight: 500 }}>{displayName}</div>
+              <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "1px" }}>{displayEmail}</div>
             </div>
             {ITEMS.map((it) =>
               it.href ? (

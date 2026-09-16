@@ -1,37 +1,57 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
-import { SelectField, ToastButton, Toggle } from "../DemoControls";
+import { getLiveMetrics } from "@/lib/live/metrics";
+import { providerStatuses } from "@/lib/providers/registry";
+import { ToastButton, Toggle } from "../DemoControls";
 import SettingsRail from "../SettingsRail";
+import { EmptyState, brandLabel } from "../states";
 
-/* Settings — Platforms (frame #settings-platforms; audit fix: Gemini un-paused). */
+/* Settings — Platforms.
+
+   Which answer engines this deployment can sample, read from the provider
+   registry against the real environment, and what each has actually returned,
+   read from the live metrics layer. The "412 prompts / day" figures, the
+   "5 OF 5 ENABLED" badge, the plan quota and the "next run in 6h 12m" countdown
+   were all fixture — the prompt count is now the tracked set, the connected
+   count is the real key state, and the schedule card reports the sampler
+   plumbing (cron secret, last run) instead of inventing a clock. */
 
 export const metadata: Metadata = {
   title: "Platforms — Settings",
 };
 
-const TOGGLE_NOTE = "Platform toggles apply on live workspaces.";
+export const dynamic = "force-dynamic";
 
-export default function PlatformsSettingsPage() {
+const NOT_WIRED = "Pausing a lane isn't wired up yet — every connected provider is sampled.";
+
+const card: React.CSSProperties = {
+  background: "var(--bg1)",
+  border: "1px solid var(--brd)",
+  borderRadius: "10px",
+  padding: "17px 19px",
+};
+
+const stat: React.CSSProperties = { fontSize: "11.5px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" };
+
+export default async function PlatformsSettingsPage() {
+  const m = await getLiveMetrics();
+  const brand = brandLabel(m.workspace?.brand);
+  const providers = providerStatuses();
+  const connected = providers.filter((p) => p.configured).length;
+  const cronArmed = !!(process.env.CRON_SECRET || process.env.ANSWR_INGEST_SECRET);
+  const sampled = new Map(m.platforms.map((p) => [p.provider, p]));
+
   return (
     <>
       <Topbar
         crumb={["Settings", "Platforms"]}
+        brand={brand}
         showDateRange={false}
         showPlatforms={false}
         exportLabel={null}
-        extra={
-          <>
-            <span style={{ fontSize: "11.5px", color: "var(--fnt)" }}>Changes apply from the next run</span>
-            <ToastButton
-              className="btn-ac"
-              note="Saving changes needs a live workspace — this demo is read-only."
-              style={{ fontSize: "12.5px", fontWeight: 500, borderRadius: "7px", padding: "6px 14px", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Save changes
-            </ToastButton>
-          </>
-        }
+        extra={<span style={{ fontSize: "11.5px", color: "var(--fnt)" }}>Connected lanes are sampled on the next run</span>}
       />
       <div className="frame-settings-platforms" style={{ flex: "1", display: "flex" }}>
         <SettingsRail />
@@ -39,117 +59,141 @@ export default function PlatformsSettingsPage() {
           <div>
             <div style={{ fontSize: "16px", fontWeight: "600" }}>{"Platforms"}</div>
             <div style={{ fontSize: "12.5px", color: "var(--mut)", marginTop: "4px" }}>
-              {"Where your prompt set runs. All five are on by default for new workspaces — pausing one excludes it from scores until re-enabled."}
+              {"Where your prompt set runs. A lane samples answers once its API key is set in the deployment's environment — until then it contributes nothing to scores."}
             </div>
             <div style={{ marginTop: "14px" }}>
               <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "15px 19px 11px" }}>
                   <div>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13.5px", fontWeight: "600" }}>{"Monitored platforms"}<Hint text="AI tools we ask your questions on" /></span>
-                    <div style={{ fontSize: "12px", color: "var(--fnt)", marginTop: "3px" }}>{"Your 412 prompts run on every enabled platform, daily at the scheduled time."}</div>
+                    <div style={{ fontSize: "12px", color: "var(--fnt)", marginTop: "3px" }}>
+                      {m.promptsTracked === 0
+                        ? "No prompts are tracked yet, so nothing is being asked on any lane."
+                        : `Your ${m.promptsTracked} tracked prompt${m.promptsTracked === 1 ? "" : "s"} run on every connected platform.`}
+                    </div>
                   </div>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"5 OF 5 ENABLED"}<Hint text="Switched off ones are left out of scores" align="right" size={12} /></span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>
+                    {`${connected} OF ${providers.length} CONNECTED`}
+                    <Hint text="Lanes without a key are left out of scores" align="right" size={12} />
+                  </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "13px 19px", borderBottom: "1px solid var(--brd)" }}>
-                  <div style={{ minWidth: "0", flex: "1" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "500" }}>{"ChatGPT"}</div>
-                    <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{"GPT-5 · web-enabled sampling"}</div>
-                  </div>
-                  <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"412 prompts / day"}</span>
-                  <Toggle label="Toggle ChatGPT monitoring" note={TOGGLE_NOTE} width={30} height={18} knob={14} radius={9} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "13px 19px", borderBottom: "1px solid var(--brd)" }}>
-                  <div style={{ minWidth: "0", flex: "1" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "500" }}>{"Perplexity"}</div>
-                    <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{"Sonar · citations native"}</div>
-                  </div>
-                  <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"412 prompts / day"}</span>
-                  <Toggle label="Toggle Perplexity monitoring" note={TOGGLE_NOTE} width={30} height={18} knob={14} radius={9} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "13px 19px", borderBottom: "1px solid var(--brd)" }}>
-                  <div style={{ minWidth: "0", flex: "1" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "500" }}>{"Google AI Overviews"}</div>
-                    <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{"US + EU result pages"}</div>
-                  </div>
-                  <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"388 prompts trigger an overview"}</span>
-                  <Toggle label="Toggle Google AI Overviews monitoring" note={TOGGLE_NOTE} width={30} height={18} knob={14} radius={9} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "13px 19px", borderBottom: "1px solid var(--brd)" }}>
-                  <div style={{ minWidth: "0", flex: "1" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "500" }}>{"Claude"}</div>
-                    <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{"Sonnet · web search on"}</div>
-                  </div>
-                  <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"412 prompts / day"}</span>
-                  <Toggle label="Toggle Claude monitoring" note={TOGGLE_NOTE} width={30} height={18} knob={14} radius={9} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "13px 19px" }}>
-                  <div style={{ minWidth: "0", flex: "1" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "500" }}>{"Gemini"}</div>
-                    <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{"2.5 Pro"}</div>
-                  </div>
-                  <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"412 prompts / day"}</span>
-                  <Toggle label="Toggle Gemini monitoring" note={TOGGLE_NOTE} width={30} height={18} knob={14} radius={9} />
-                </div>
+                {providers.map((p, i) => {
+                  const row = sampled.get(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "14px",
+                        padding: "13px 19px",
+                        ...(i < providers.length - 1 ? { borderBottom: "1px solid var(--brd)" } : {}),
+                      }}
+                    >
+                      <div style={{ minWidth: "0", flex: "1" }}>
+                        <div style={{ fontSize: "13px", fontWeight: "500" }}>{p.label}</div>
+                        <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "2px" }}>{p.blurb}</div>
+                      </div>
+                      <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>
+                        {!p.configured
+                          ? "No key set"
+                          : row
+                            ? `${row.answers} answer${row.answers === 1 ? "" : "s"} sampled`
+                            : "No answers yet"}
+                      </span>
+                      <Toggle
+                        label={`Toggle ${p.label} monitoring`}
+                        note={p.configured ? NOT_WIRED : `${p.label} has no key set — connect it in Settings › Integrations.`}
+                        defaultOn={p.configured}
+                        width={30}
+                        height={18}
+                        knob={14}
+                        radius={9}
+                      />
+                    </div>
+                  );
+                })}
               </div>
+              {connected === 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  <EmptyState
+                    line="No answer engines connected."
+                    note="Add a provider key in Settings › Integrations and redeploy — the sampler stays inert until at least one lane has a key."
+                  />
+                </div>
+              )}
             </div>
           </div>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "16px", fontWeight: "600" }}>{"Schedule & quota"}<Hint text="When we ask, and how much you get" /></div>
-            <div style={{ fontSize: "12.5px", color: "var(--mut)", marginTop: "4px" }}>{"One run per day on the Scale plan. Manual runs don't count against quota."}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "16px", fontWeight: "600" }}>{"Schedule & sampling"}<Hint text="When we ask, and what came back" /></div>
+            <div style={{ fontSize: "12.5px", color: "var(--mut)", marginTop: "4px" }}>
+              {"The sampler runs on the deployment's cron (vercel.json → /api/runs/execute). Everything below is what it has actually collected."}
+            </div>
             <div style={{ marginTop: "14px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", padding: "17px 19px" }}>
+                <div style={card}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13.5px", fontWeight: "600" }}>{"Run schedule"}<Hint text="When we ask AI your questions" /></div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-                    <SelectField
-                      defaultValue="Daily at 02:00 UTC"
-                      items={["Daily at 02:00 UTC", "Daily at 08:00 UTC", "Daily at 14:00 UTC", "Twice daily · 02:00 & 14:00 UTC"]}
-                      note="Schedule changes apply on live workspaces — the demo runs a fixed fixture."
-                    />
-                    <ToastButton
-                      note="Manual runs start on live workspaces — this demo is read-only."
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px", flexWrap: "wrap" }}>
+                    <span
                       style={{
-                        fontSize: "12px",
-                        fontWeight: "500",
-                        color: "var(--mut)",
-                        border: "1px solid var(--brd)",
-                        borderRadius: "7px",
-                        padding: "8px 14px",
-                        background: "var(--bg2)",
-                        cursor: "pointer",
-                        fontFamily: "inherit",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        padding: "3px 9px",
+                        borderRadius: "999px",
+                        whiteSpace: "nowrap",
+                        color: cronArmed ? "#3fd08a" : "var(--fnt)",
+                        background: cronArmed ? "rgba(63,208,138,0.12)" : "rgba(255,255,255,0.045)",
+                        border: `1px solid ${cronArmed ? "color-mix(in oklab,#3fd08a 34%,transparent)" : "var(--brd)"}`,
                       }}
                     >
-                      {"Run now"}
-                    </ToastButton>
+                      {cronArmed ? "Armed" : "Not armed"}
+                    </span>
+                    <span style={{ fontSize: "12px", color: "var(--mut)" }}>
+                      {cronArmed ? "The scheduled run can execute." : "Set CRON_SECRET to arm the scheduled run."}
+                    </span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", color: "var(--fnt)", marginTop: "12px", fontVariantNumeric: "tabular-nums" }}>
-                    <span>{"Next run in 6h 12m"}</span>
-                    <span>{"Last: Aug 5, 02:00 · 412 prompts · 5 platforms ✓"}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "12px", ...stat }}>
+                    <span>{m.lastRunAt ? `Last run collected ${m.answersSampled} answer${m.answersSampled === 1 ? "" : "s"}` : "No run has completed yet"}</span>
+                    <Link href="/app/settings/integrations" style={{ color: "var(--ac)", fontWeight: 500 }}>
+                      {"Pipeline status"}
+                    </Link>
                   </div>
                 </div>
-                <div style={{ background: "var(--bg1)", border: "1px solid var(--brd)", borderRadius: "10px", padding: "17px 19px" }}>
+                <div style={card}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13.5px", fontWeight: "600" }}>{"Prompt quota"}<Hint text="How many questions your plan allows" /></span>
-                    <span style={{ fontSize: "11px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>{"SCALE PLAN"}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13.5px", fontWeight: "600" }}>{"Tracked prompt set"}<Hint text="The questions we ask for you" /></span>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginTop: "12px" }}>
-                    <span style={{ fontSize: "20px", fontWeight: "600", fontVariantNumeric: "tabular-nums" }}>{"412"}</span>
-                    <span style={{ fontSize: "12px", color: "var(--fnt)" }}>{"of 1,000 tracked prompts"}</span>
+                    <span style={{ fontSize: "20px", fontWeight: "600", fontVariantNumeric: "tabular-nums" }}>{m.promptsTracked}</span>
+                    <span style={{ fontSize: "12px", color: "var(--fnt)" }}>{m.promptsTracked === 1 ? "tracked prompt" : "tracked prompts"}</span>
                   </div>
-                  <div style={{ height: "5px", background: "var(--bg2)", borderRadius: "3px", marginTop: "10px" }}>
-                    <div style={{ width: "41%", height: "5px", background: "var(--ac)", borderRadius: "3px" }} />
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", color: "var(--fnt)", marginTop: "10px" }}>
-                    <span>{"Demand searches: 18 left this month"}</span>
-                    <ToastButton
-                      note="Plan changes apply on live workspaces — this demo is read-only."
-                      style={{ font: "inherit", color: "var(--ac)", fontWeight: "500", background: "none", border: "none", padding: "0", cursor: "pointer" }}
-                    >
-                      {"Manage plan"}
-                    </ToastButton>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "12px", ...stat }}>
+                    <span>{m.days > 0 ? `${m.days} day${m.days === 1 ? "" : "s"} of sampled history` : "No sampled history yet"}</span>
+                    <Link href="/app/prompts" style={{ color: "var(--ac)", fontWeight: 500 }}>
+                      {"Manage prompts"}
+                    </Link>
                   </div>
                 </div>
+              </div>
+              <div style={{ marginTop: "10px" }}>
+                <ToastButton
+                  note="Manual runs are triggered by the sampler endpoint, not from this screen."
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "500",
+                    color: "var(--mut)",
+                    border: "1px solid var(--brd)",
+                    borderRadius: "7px",
+                    padding: "8px 14px",
+                    background: "var(--bg2)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {"Run now"}
+                </ToastButton>
               </div>
             </div>
           </div>

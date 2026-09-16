@@ -1,36 +1,43 @@
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
-import Explorer from "./Explorer";
-import { conversationExportRows } from "@/lib/data/conversations";
-import "./page.css";
+import { getWorkspace } from "@/lib/workspace";
+import NotAvailable from "./NotAvailable";
 
-/* Conversation Explorer — converted from canvas frame #conversations.
+/* Conversations — route kept, fixtures removed.
 
-   Audit topbar normalization: the frame had no date-range or Export, so the
-   page uses the standard Topbar; the frame's search box and "Mentions" pill
-   moved into a control row at the top of the page body.
+   The screen used to render a fixture set of transcripts with an invented
+   sample size. None of that can come from the connected answer providers: a
+   conversation explorer needs a licensed, consented conversation panel, which
+   is a commercial data contract rather than an API key. The fixture module,
+   the two-pane explorer, its CSV export and its filters are gone; the route
+   still renders so navigation (sidebar + ⌘K) doesn't 404.
 
-   Content pass (F4): the six transcripts are real, researched consumer chats
-   about running shoes — every claim comes from a page that was fetched and
-   every citation URL resolves. Data lives in lib/data/conversations.ts; the
-   two-pane explorer is the client child below. */
+   The only live value on the page is the workspace brand in the crumb — read
+   from lib/workspace, the same source lib/live/metrics reads, so the header
+   never shows a brand this deployment isn't tracking. */
 
 export const metadata: Metadata = {
   title: "Conversations",
 };
 
-export default function ConversationsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ConversationsPage() {
+  const workspace = await getWorkspace();
+  const brand = workspace?.brand ?? "Your brand";
+
   return (
     <div className="frame-conversations" style={{flex:"1",display:"flex",flexDirection:"column",minWidth:"0"}}>
       <Topbar
         crumb="Conversations"
-        rangeNote="The explorer ships a fixed set of sampled threads from the 30-day window. The date range re-slices Overview, Insights, Citations and Agent Analytics."
-        platformNote="Every thread names the platform it came from — the list isn't narrowed by the platform filter."
-        exportFilename="nike-conversations-30d.csv"
-        exportRows={conversationExportRows()}
-        exportWindow="Sampled conversations from the last 30 days (Jul 7 – Aug 5, 2026)"
+        brand={brand}
+        showDateRange={false}
+        showPlatforms={false}
+        exportLabel={null}
       />
-      <Explorer />
+      <div style={{padding:"24px",display:"flex",flexDirection:"column",gap:"16px"}}>
+        <NotAvailable />
+      </div>
     </div>
   );
 }

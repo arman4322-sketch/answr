@@ -2,18 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
+import { getLiveMetrics } from "@/lib/live/metrics";
 import { ToastButton } from "../DemoControls";
 import SettingsRail from "../SettingsRail";
+import { EmptyState, brandLabel } from "../states";
 
-/* Settings — Billing. Rail item existed in the canvas with no page; built here.
-   Plan/quota figures agree with the rest of the fixture: Scale plan,
-   412 of 1,000 tracked prompts, 18 Demand searches left this month. */
+/* Settings — Billing.
+
+   No billing provider is connected to this deployment: no subscription, no
+   payment method, no invoice history and no enforced plan quota. The plan name,
+   the monthly price, the renewal date, the paid invoices, the card on file and
+   the billing contact this screen used to show were all fixture and are gone.
+
+   What remains is real: the usage counters below are the workspace's actual
+   tracked prompts, competitors and sampled answers, shown as counts rather than
+   as progress bars against a limit nobody is enforcing. */
 
 export const metadata: Metadata = {
   title: "Billing — Settings",
 };
 
-const NOTE = "Billing changes need a live workspace — this demo is read-only.";
+export const dynamic = "force-dynamic";
+
+const NOT_WIRED = "Billing isn't connected to this deployment — there is no subscription to change.";
 
 const card: React.CSSProperties = {
   background: "var(--bg1)",
@@ -22,52 +33,39 @@ const card: React.CSSProperties = {
   padding: "16px 18px",
 };
 
-const USAGE = [
-  { label: "Tracked prompts", used: 412, limit: 1000, display: "412 / 1,000", hint: "Questions we ask AI for you daily" },
-  { label: "Demand searches", used: 12, limit: 30, display: "18 left this month", hint: "Keyword lookups you have left" },
-  { label: "Team seats", used: 4, limit: 10, display: "4 / 10", hint: "People who can open this workspace" },
-  { label: "Tracked brands", used: 3, limit: 5, display: "3 / 5", hint: "Separate brands you can measure" },
-];
+export default async function BillingPage() {
+  const m = await getLiveMetrics();
+  const ws = m.workspace;
+  const brand = brandLabel(ws?.brand);
 
-const INVOICES = [
-  ["Aug 1, 2026", "INV-2026-0801", "$1,290.00", "Paid"],
-  ["Jul 1, 2026", "INV-2026-0701", "$1,290.00", "Paid"],
-  ["Jun 1, 2026", "INV-2026-0601", "$1,290.00", "Paid"],
-  ["May 1, 2026", "INV-2026-0501", "$490.00", "Paid"],
-];
+  const usage: { label: string; value: string; hint: string }[] = [
+    { label: "Tracked prompts", value: `${m.promptsTracked}`, hint: "Questions we ask AI for you daily" },
+    { label: "Tracked competitors", value: `${ws?.competitors.length ?? 0}`, hint: "Rivals in your share-of-voice split" },
+    { label: "Answers sampled", value: `${m.answersSampled}`, hint: "Replies collected so far" },
+    { label: "Days of history", value: `${m.days}`, hint: "Days the sampler has actually run" },
+  ];
 
-const INVOICE_ROWS: string[][] = [["Date", "Invoice", "Amount", "Status"], ...INVOICES];
-
-export default function BillingPage() {
   return (
     <>
-      <Topbar
-        crumb={["Settings", "Billing"]}
-        showDateRange={false}
-        showPlatforms={false}
-        exportLabel="Export invoices"
-        exportFilename="nike-invoices.csv"
-        exportRows={INVOICE_ROWS}
-        exportModule="Billing"
-        exportWindow="Invoice history May 1 – Aug 1, 2026 — billing periods, not the workspace date range"
-      />
+      <Topbar crumb={["Settings", "Billing"]} brand={brand} showDateRange={false} showPlatforms={false} exportLabel={null} />
       <div style={{ flex: "1", display: "flex" }}>
         <SettingsRail />
         <div style={{ flex: "1", padding: "24px 28px", display: "flex", flexDirection: "column", gap: "14px", maxWidth: "900px" }}>
           <div style={card}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: "13.5px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
                   Current plan
                   <Hint text="What you pay for and what you get" />
                 </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginTop: "8px" }}>
-                  <span style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>Scale</span>
-                  <span style={{ fontSize: "13px", color: "var(--mut)", fontVariantNumeric: "tabular-nums" }}>$1,290/mo · billed annually</span>
+                <div style={{ marginTop: "12px" }}>
+                  <EmptyState
+                    line="No subscription on this workspace."
+                    note="Billing is not connected to this deployment, so nothing is being charged and no plan limits are enforced."
+                  />
                 </div>
-                <div style={{ fontSize: "11.5px", color: "var(--fnt)", marginTop: "5px" }}>Renews Sep 1, 2026 · 5 platforms, daily runs, MCP server included.</div>
               </div>
-              <span style={{ marginLeft: "auto", display: "flex", gap: "8px", flex: "none" }}>
+              <span style={{ display: "flex", gap: "8px", flex: "none" }}>
                 <Link
                   href="/pricing"
                   style={{
@@ -82,7 +80,7 @@ export default function BillingPage() {
                   Compare plans
                 </Link>
                 <ToastButton
-                  note={NOTE}
+                  note={NOT_WIRED}
                   className="btn-ac"
                   style={{ fontSize: "12.5px", fontWeight: 500, borderRadius: "7px", padding: "7px 14px", border: "none", cursor: "pointer", fontFamily: "inherit" }}
                 >
@@ -94,27 +92,22 @@ export default function BillingPage() {
 
           <div style={card}>
             <div style={{ fontSize: "13.5px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-              Usage this period
-              <Hint text="How much of your plan you have used" />
+              Usage
+              <Hint text="What this workspace is actually using" />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "13px", marginTop: "14px" }}>
-              {USAGE.map((u) => {
-                const pct = Math.round((u.used / u.limit) * 100);
-                return (
-                  <div key={u.label}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12.5px", marginBottom: "6px" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        {u.label}
-                        <Hint text={u.hint} />
-                      </span>
-                      <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--mut)" }}>{u.display}</span>
-                    </div>
-                    <div style={{ height: "4px", background: "var(--bg2)", borderRadius: "2px" }}>
-                      <div style={{ width: `${pct}%`, height: "4px", background: pct > 85 ? "var(--gold)" : "var(--ac)", borderRadius: "2px" }} />
-                    </div>
+            <div style={{ fontSize: "11.5px", color: "var(--fnt)", marginTop: "3px" }}>
+              Live counts from the workspace and the sampler. No plan limit is applied to them.
+            </div>
+            <div style={{ display: "flex", gap: "28px", marginTop: "14px", flexWrap: "wrap" }}>
+              {usage.map((u) => (
+                <div key={u.label}>
+                  <div style={{ fontSize: "19px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{u.value}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "var(--fnt)", marginTop: "3px" }}>
+                    {u.label}
+                    <Hint text={u.hint} size={12} />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -123,29 +116,8 @@ export default function BillingPage() {
               Payment method
               <Hint text="The card we charge each renewal" />
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginTop: "12px",
-                padding: "11px 13px",
-                background: "var(--bg0)",
-                border: "1px solid var(--brd)",
-                borderRadius: "7px",
-                fontSize: "12.5px",
-              }}
-            >
-              <span style={{ fontWeight: 500 }}>Visa ending 4242</span>
-              <span style={{ color: "var(--fnt)" }}>Expires 04 / 2029</span>
-              <span style={{ marginLeft: "auto" }}>
-                <ToastButton note={NOTE} style={{ fontSize: "11.5px", background: "none", border: "none", color: "var(--ac)", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                  Update
-                </ToastButton>
-              </span>
-            </div>
-            <div style={{ fontSize: "11px", color: "var(--fnt)", marginTop: "9px" }}>
-              Billing contact: dana@nike.com · Invoices are emailed on renewal.
+            <div style={{ marginTop: "12px" }}>
+              <EmptyState line="No payment method on file." note="No card or billing contact is stored for this workspace." />
             </div>
           </div>
 
@@ -154,45 +126,8 @@ export default function BillingPage() {
               Invoices
               <Hint text="Receipts for everything you have paid" />
             </div>
-            <div style={{ marginTop: "12px", border: "1px solid var(--brd)", borderRadius: "8px", overflow: "hidden" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1.2fr .8fr .8fr",
-                  padding: "9px 14px",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  letterSpacing: ".1em",
-                  textTransform: "uppercase",
-                  color: "var(--fnt)",
-                  borderBottom: "1px solid var(--brd)",
-                }}
-              >
-                <span>Date</span>
-                <span>Invoice</span>
-                <span>Amount</span>
-                <span>Status</span>
-              </div>
-              {INVOICES.map((inv, i) => (
-                <div
-                  key={inv[1]}
-                  className="row-hover"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1.2fr .8fr .8fr",
-                    alignItems: "center",
-                    padding: "11px 14px",
-                    fontSize: "12.5px",
-                    fontVariantNumeric: "tabular-nums",
-                    ...(i > 0 ? { borderTop: "1px solid var(--brd)" } : {}),
-                  }}
-                >
-                  <span>{inv[0]}</span>
-                  <span style={{ color: "var(--mut)" }}>{inv[1]}</span>
-                  <span>{inv[2]}</span>
-                  <span style={{ color: "var(--good)" }}>{inv[3]}</span>
-                </div>
-              ))}
+            <div style={{ marginTop: "12px" }}>
+              <EmptyState line="No invoices." note="Nothing has been billed, so there is no receipt history to show." />
             </div>
           </div>
         </div>

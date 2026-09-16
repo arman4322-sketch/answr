@@ -35,8 +35,7 @@ export default function LivePage() {
             Real data
           </span>
           <span style={{ fontSize: "12.5px", color: "var(--mut)" }}>
-            Real AI-crawler traffic captured on this deployment. Every other screen runs on the Nike demo fixture; this one
-            counts requests that actually happened.
+            Real AI-crawler traffic captured on this deployment — requests that actually happened, not estimates.
           </span>
         </div>
         <LiveTelemetry />

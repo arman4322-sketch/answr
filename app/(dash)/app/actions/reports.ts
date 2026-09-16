@@ -1,206 +1,227 @@
-import type { ReportSpec } from "@/lib/export/report";
-import { WINDOW_30D, seriesSection } from "@/lib/export/reports";
-import { METRICS } from "@/lib/metrics";
-import { impactHistory, impactProjection, impactXLabels } from "@/lib/data/optimize";
+import type { ReportSpec, ReportSection, SummaryStat } from "@/lib/export/report";
+import {
+  enginesLabel,
+  fmtDateTime,
+  historyLabel,
+  kindLabel,
+  rankLabel,
+  savedStatusLabel,
+  type ActionsScreen,
+  type GapRow,
+} from "./rows";
 
-/* Actions → executive CSVs.
+/* Actions → executive CSVs, built from the live queue the screen renders.
 
-   The queue report answers the only two questions a VP asks of this screen —
-   how much visibility is on the table, and what has to ship to get it — so it
-   leads with the queue counts and the impact model, carries the measured and
-   projected visibility curves as one dated table, then lists every action with
-   its estimate, effort and blast radius. The detail report is the brief for one
-   action, exportable on its own. */
+   The old specs exported a story the product could not support: a "+9.4pt
+   available" impact model, per-category gains, a measured-lift calibration, an
+   owner and effort per action and a 30-day window the data never covered. All
+   of it was fixture text. What ships now is the evidence itself — which tracked
+   prompts the brand lost, to whom, on how many engines, and when it was last
+   sampled — plus whatever actions the user saved themselves.
 
-const FOOTNOTE_MODEL =
-  "Source: the recommendation engine's gap analysis for this workspace (which prompts and topics the brand loses, and why), scored against cohort priors from comparable workspaces.";
-const FOOTNOTE_MEASURE =
-  "Measured lift uses difference-in-differences — the action's target prompts against untouched control prompts — so market-wide drift is stripped out. Each measurement window closes 14 days after ship.";
+   No estimate, score, effort, owner or date is exported that the pipeline does
+   not actually produce. */
+
+const FOOTNOTE_DERIVED =
+  "Every row is derived from the latest sampled run per prompt (lib/live/metrics) — no figure in this file is estimated, projected or modelled.";
+const FOOTNOTE_ORDER =
+  "Sorted worst-first: prompts whose answers named no one from your brand come before prompts where the brand is named after a competitor.";
+const FOOTNOTE_NO_MODEL =
+  "No impact score, effort size, owner, due date or projected lift is exported. Nothing in the sampling pipeline measures the effect of a fix, so those columns do not exist rather than being guessed.";
 const FOOTNOTE_METRICS = "Full metric definitions: METRICS.md, or the ⓘ beside each figure in-app.";
 
-export const actionsSpec: ReportSpec = {
-  module: "Actions",
-  brand: "Nike",
-  window: WINDOW_30D,
-  summary: [
-    {
-      label: METRICS.impact_estimate.label,
-      value: "+9.4pt available",
-      note: `${METRICS.impact_estimate.plain}. Visibility goes 34.2% → 43.6% if all 24 open actions ship: Content +4.1pt, Technical +3.5pt, Authority +1.8pt.`,
-    },
-    {
-      label: "Open",
-      value: "24",
-      note: `${METRICS.actions_queue.plain}. Nobody has started these yet — they hold the entire +9.4pt.`,
-    },
-    {
-      label: "In progress",
-      value: "6",
-      note: "Someone is working on them now. Action #87 (unblock AI crawlers on /help) is the highest-impact one in flight at +1.9pt.",
-    },
-    {
-      label: "Shipped · 90d",
-      value: "38",
-      note: "Fixes finished in the last three months. Their measured lift is what calibrates the projection below.",
-    },
-    {
-      label: "Model accuracy to date",
-      value: "Action #64 measured +0.6pt against +0.4pt estimated",
-      note: `${METRICS.measured_lift.plain}. The most recent closed measurement beat its estimate by 50%.`,
-    },
-    {
-      label: "Highest-scoring open action",
-      value: "#92 — Nike vs Adidas comparison page (+2.8pt, effort M, 41 prompts)",
-      note: `${METRICS.action_score.plain}. Biggest single win in the queue; ChatGPT cites comparison pages 3× more than category pages.`,
-    },
-  ],
-  sections: [
-    seriesSection(
-      "Impact model — measured visibility and projection",
-      [
-        { id: "measured", label: "Measured", color: "var(--ac)", points: impactHistory },
-        { id: "projected", label: "Projected", color: "#b98ed9", points: impactProjection },
-      ],
-      impactXLabels,
-      {
-        unit: "%",
-        note: "The first 30 rows are measured days (Jul 7 – Aug 5); the Proj rows are the modelled path if all open actions ship, at 6-day steps to +90d.",
-      }
-    ),
-    {
-      title: "Action queue",
-      note: "Every action on the board, with its estimated impact, effort and how many tracked prompts it touches.",
-      columns: ["#", "Action", "Category", "Status", "Owner", "Est. impact", "Effort", "Prompts affected"],
-      rows: [
-        ["92", 'Publish a "Nike vs Adidas" running-shoe comparison page', "Content", "OPEN", "DO", "+2.8pt", "M", "41"],
-        ["87", "Add llms.txt and allow AI crawlers on /help", "Technical", "IN PROGRESS", "MK", "+1.9pt", "S", "28"],
-        ["81", "Add FAQ + Product schema to shoe product pages", "Technical", "OPEN", "—", "+1.4pt", "S", "16"],
-        ["76", "Pitch Wirecutter's running-shoe roundup", "Authority", "OPEN", "JT", "+1.2pt", "L", "33"],
-        ["64", "Consolidate duplicate help-center pages", "Technical", "SHIPPED Jul 22", "—", "+0.4pt est.", "—", "measured +0.6pt"],
-      ],
-    },
-    {
-      title: "Impact by category",
-      note: "Where the +9.4pt sits, so the work can be staffed against the right team.",
-      columns: ["Category", "Estimated visibility gain"],
-      rows: [
-        ["Content actions", "+4.1pt"],
-        ["Technical actions", "+3.5pt"],
-        ["Authority actions", "+1.8pt"],
-        ["Total available", "+9.4pt"],
-      ],
-    },
-    {
-      title: "Why each open action exists",
-      note: "The evidence the recommendation engine cited, verbatim.",
-      columns: ["#", "Evidence"],
-      rows: [
-        [
-          "92",
-          "ChatGPT cites comparison pages 3× more often than category pages for commercial prompts. Adidas's own comparison page is cited in 31 answers where Nike is absent.",
-        ],
-        [
-          "87",
-          "AI crawlers were blocked on 214 help-center pages last month. Help citations lag running-guide citations 5:1 despite higher answer relevance.",
-        ],
-        [
-          "81",
-          'AI Overviews pulls pricing answers from structured data. Competitors with Product schema win 68% of "how much does X cost" prompts.',
-        ],
-        [
-          "76",
-          "wirecutter.com is a top-5 source across all platforms but cites Nike in only 9% of relevant answers. The 2026 roundup refresh is scheduled for September.",
-        ],
-      ],
-    },
-  ],
-  footnotes: [
-    "The demo ships the top five actions; all 24 open actions export on live workspaces.",
-    FOOTNOTE_MODEL,
-    FOOTNOTE_MEASURE,
-    "The projection applies diminishing returns — shipping every action does not simply add the individual estimates.",
-    FOOTNOTE_METRICS,
-  ],
-};
+/** The window the exported rows really cover — never a fixed "last 30 days". */
+export function actionsWindowLabel(d: ActionsScreen): string {
+  if (!d.configured) return "No workspace configured — nothing has been sampled";
+  if (!d.hasData) return "No runs sampled yet — no gaps can be derived";
+  return `Latest run per prompt · ${historyLabel(d.days)} (last run ${fmtDateTime(d.lastRunAt)})`;
+}
 
-export const action92Spec: ReportSpec = {
-  module: "Actions · #92 comparison page",
-  brand: "Nike",
-  window: WINDOW_30D,
-  summary: [
+function gapRow(g: GapRow, i: number): (string | number)[] {
+  return [
+    i + 1,
+    kindLabel(g.kind),
+    g.prompt,
+    g.kind === "missing" ? "not named" : rankLabel(g.rank),
+    g.providersAnswered,
+    g.competitorsMentioned.join(" · "),
+    fmtDateTime(g.ts),
+  ];
+}
+
+const GAP_COLUMNS = [
+  "Queue position",
+  "Gap",
+  "Prompt",
+  "Rank in answers",
+  "Engines answered",
+  "Competitors named",
+  "Last run (UTC)",
+];
+
+export function actionsReport(d: ActionsScreen): ReportSpec {
+  const brand = d.brand || "Not configured";
+  const summary: SummaryStat[] = [
     {
-      label: "Action",
-      value: '#92 — Publish a "Nike vs Adidas" running-shoe comparison page',
-      note: "Content · topic Running shoes · effort M. Created Jul 28 by the recommendation engine, assigned to Dana Okafor, status OPEN.",
+      label: "Visibility gaps",
+      value: String(d.missingCount),
+      note: `Tracked prompts whose latest sampled answers named ${brand} nowhere. These are the queue's worst rows.`,
     },
     {
-      label: "Current performance",
-      value: "28.6% share of voice (topic scope)",
-      delta: "→ 31.4% projected (+2.8pt)",
-      note: `${METRICS.impact_estimate.plain}. The single largest estimate in the open queue.`,
+      label: "Ranking gaps",
+      value: String(d.trailingCount),
+      note: `Tracked prompts where ${brand} is named, but at least one tracked competitor is named first.`,
     },
     {
-      label: "Prompts affected",
-      value: "41",
-      note: "Tracked prompts whose answers this page could change — 10% of the workspace's 412.",
+      label: "Prompts named first",
+      value: String(d.leadCount),
+      note: `Sampled prompts where ${brand} is named ahead of every tracked competitor — no action derived.`,
     },
     {
-      label: "The gap in one line",
-      value: "Adidas's comparison page appears in 31 answers where Nike is absent",
-      note: "On prompts Nike already ranks #1 for elsewhere. A neutral, well-structured comparison page redirects those citations.",
+      label: "Prompts sampled",
+      value: String(d.promptsSampled),
+      note: `Prompts with a completed run; ${d.promptsTracked} prompt(s) are tracked right now. A prompt with no run produces no gap and appears nowhere in this file.`,
     },
     {
-      label: "Progress",
-      value: "1 of 3 steps done",
-      note: "Outline complete (Aug 1, Dana). Drafting and publishing remain.",
+      label: "Sampled history",
+      value: historyLabel(d.days),
+      note: `Last run ${fmtDateTime(d.lastRunAt)}. Every row reflects that run only — no trend is implied.`,
     },
-  ],
-  sections: [
     {
-      title: "Why this matters",
-      note: "The engine's reasoning, verbatim.",
-      columns: ["Rationale"],
+      label: "Actions you saved",
+      value: String(d.saved.length),
+      note: "Actions created by hand in this workspace, with whatever estimate and effort you typed.",
+    },
+  ];
+
+  const sections: ReportSection[] = [];
+
+  const missing = d.gaps.filter((g) => g.kind === "missing");
+  const trailing = d.gaps.filter((g) => g.kind === "trailing");
+
+  if (missing.length) {
+    sections.push({
+      title: "Visibility gaps — no engine named your brand",
+      note: "The latest answers to these prompts did not mention the brand at all. Queue position is the screen's worst-first order.",
+      columns: GAP_COLUMNS,
+      rows: missing.map((g, i) => gapRow(g, i)),
+    });
+  }
+  if (trailing.length) {
+    sections.push({
+      title: "Ranking gaps — competitors named first",
+      note: "The brand appears, but after a tracked competitor. Rank is the average position of the brand's first mention across the engines that answered.",
+      columns: GAP_COLUMNS,
+      rows: trailing.map((g, i) => gapRow(g, missing.length + i)),
+    });
+  }
+  if (d.rivals.length) {
+    sections.push({
+      title: "Competitors named across this queue",
+      note: "How many prompts in the queue above named each tracked competitor in their latest answers.",
+      columns: ["Competitor", "Prompts in this queue naming them"],
+      rows: d.rivals.map((r) => [r.name, r.prompts]),
+    });
+  }
+  if (d.saved.length) {
+    sections.push({
+      title: "Actions you saved",
+      note: "Created through the action queue. Impact is your own estimate — Answr does not compute one.",
+      columns: ["Title", "Your impact estimate", "Effort", "Status", "Created (UTC)"],
+      rows: d.saved.map((a) => [
+        a.title,
+        a.impact || "not estimated",
+        a.effort || "—",
+        savedStatusLabel(a.status),
+        fmtDateTime(a.createdAt),
+      ]),
+    });
+  }
+  if (!sections.length) {
+    sections.push({
+      title: "Action queue",
+      note: "Nothing to report yet.",
+      columns: ["State"],
       rows: [
         [
-          "ChatGPT cites comparison pages 3× more often than category pages for commercial prompts. Adidas's own comparison page currently appears in 31 answers where Nike is absent — for prompts you already rank #1 on elsewhere. A neutral, well-structured comparison page redirects those citations.",
+          !d.configured
+            ? "No workspace configured — set up a brand, domain and prompt set before anything can be sampled."
+            : !d.hasData
+              ? "Workspace configured, but no answers have been sampled yet. The queue fills after the first run."
+              : `No gaps in the latest runs — ${brand} was named ahead of every tracked competitor on all ${d.promptsSampled} sampled prompt(s).`,
         ],
       ],
+    });
+  }
+
+  return {
+    module: "Actions",
+    brand,
+    window: actionsWindowLabel(d),
+    summary,
+    sections,
+    footnotes: [FOOTNOTE_DERIVED, FOOTNOTE_ORDER, FOOTNOTE_NO_MODEL, FOOTNOTE_METRICS],
+  };
+}
+
+export function gapBriefReport(d: ActionsScreen, g: GapRow): ReportSpec {
+  const brand = d.brand || "Not configured";
+  const summary: SummaryStat[] = [
+    { label: "Gap", value: kindLabel(g.kind), note: g.title },
+    { label: "Prompt", value: g.prompt, note: "The tracked prompt exactly as the sampler asks it." },
+    {
+      label: "Rank in answers",
+      value: g.kind === "missing" ? "not named" : rankLabel(g.rank),
+      note:
+        g.kind === "missing"
+          ? `No engine named ${brand} in the latest answers to this prompt.`
+          : `Average position of ${brand}'s first mention across the engines that answered.`,
     },
     {
-      title: "Implementation",
-      note: "The checklist as it stands in-app.",
-      columns: ["Step", "Status", "Detail"],
-      rows: [
-        ["1", "Done — Aug 1, Dana", "Outline from the 41 affected prompts — mirror the questions AI actually answers"],
-        ["2", "Open", "Draft with a criteria table and FAQ schema; keep brand tone neutral — cited pages skew factual"],
-        ["3", "Open", "Publish under /compare, submit to index, add to Watched URLs"],
-      ],
+      label: "Engines answered",
+      value: String(g.providersAnswered),
+      note: `${enginesLabel(g.providersAnswered)} returned an answer for this prompt in the latest run.`,
     },
     {
-      title: "References",
-      note: "Pages AI already quotes for these prompts — the pattern to beat.",
-      columns: ["URL", "What it is", "Citations · 30d"],
-      rows: [
-        ["adidas.com/compare", "The page winning your prompts", "31"],
-        ["runnersworld.com/compare/…", "Comparison grid AI leans on", "22"],
-        ["reddit.com/r/running/…", "Thread framing the comparison", "12"],
-      ],
+      label: "Competitors named",
+      value: g.competitorsMentioned.length ? g.competitorsMentioned.join(", ") : "none",
+      note: "Tracked competitors appearing in the same answers.",
     },
     {
-      title: "Affected prompts — preview",
-      note: "First rows of the 41 tracked prompts this action targets.",
-      columns: ["Prompt"],
-      rows: [
-        ["best running shoes for marathon training"],
-        ["Nike vs Adidas running shoes"],
-        ["compare Nike and Adidas for marathon training"],
-      ],
+      label: "Last run",
+      value: fmtDateTime(g.ts),
+      note: `Workspace has ${historyLabel(d.days)}.`,
     },
-  ],
-  footnotes: [
-    "The demo ships the first page of affected prompts; all 41 export on live workspaces.",
-    FOOTNOTE_MODEL,
-    "Current performance is the reading the screen labels it with — share of voice, topic scope. Topic visibility for Running shoes is reported separately in Answer Engine Insights.",
-    FOOTNOTE_METRICS,
-  ],
-};
+  ];
+
+  const sections: ReportSection[] = [
+    {
+      title: "What the answers show",
+      note: "Assembled only from values in the run.",
+      columns: ["Observation"],
+      rows: [[g.evidence]],
+    },
+  ];
+  if (g.excerpt) {
+    sections.push({
+      title: "Sampled answer — excerpt",
+      note: "The opening of the first answer received for this prompt, verbatim.",
+      columns: ["Excerpt"],
+      rows: [[g.excerpt]],
+    });
+  }
+
+  return {
+    module: `Actions · ${kindLabel(g.kind).toLowerCase()}`,
+    brand,
+    window: actionsWindowLabel(d),
+    summary,
+    sections,
+    footnotes: [
+      FOOTNOTE_DERIVED,
+      FOOTNOTE_NO_MODEL,
+      "Citations are reported across the whole workspace, not per prompt, so no source list is attached to this gap.",
+      FOOTNOTE_METRICS,
+    ],
+  };
+}

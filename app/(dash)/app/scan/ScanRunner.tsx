@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 /* Live AI-visibility scan — queries real LLMs on demand and shows the scoring
-   engine's genuine output. This is the "real numbers from LLMs" demo surface. */
+   engine's genuine output. This is the "real numbers from LLMs" demo surface.
+
+   The form used to open pre-filled with a brand, domain, category and competitor
+   set that belonged to no one using it. It now seeds from the configured
+   workspace (GET /api/workspace) and starts empty when nothing is configured —
+   the fields are yours to fill, and "Suggest category & competitors" still
+   derives the rest from whatever brand you type. */
 
 type Scores = {
   sampledAnswers: number;
@@ -33,16 +40,49 @@ const card: React.CSSProperties = { background: "var(--bg1)", border: "1px solid
 const label: React.CSSProperties = { display: "block", fontSize: "10.5px", fontWeight: 600, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--fnt)", marginBottom: "5px" };
 const input: React.CSSProperties = { width: "100%", background: "var(--bg2)", border: "1px solid var(--brd)", borderRadius: "8px", padding: "9px 11px", color: "var(--tx)", fontSize: "13px", fontFamily: "inherit" };
 
+type WorkspaceResponse = {
+  ok?: boolean;
+  configured?: boolean;
+  workspace?: { brand?: string; domain?: string; category?: string; competitors?: string[] } | null;
+};
+
 export default function ScanRunner() {
-  const [brand, setBrand] = useState("Nike");
-  const [domain, setDomain] = useState("nike.com");
-  const [category, setCategory] = useState("running shoe brands");
-  const [competitors, setCompetitors] = useState("Adidas, Brooks, Asics, New Balance, Hoka");
+  const [brand, setBrand] = useState("");
+  const [domain, setDomain] = useState("");
+  const [category, setCategory] = useState("");
+  const [competitors, setCompetitors] = useState("");
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<Result | null>(null);
   const [filling, setFilling] = useState(false);
   const [fillErr, setFillErr] = useState<string | null>(null);
+
+  /* Seed the form from the real workspace. Functional updates mean a field the
+     user has already typed into is never overwritten by a late response, and a
+     workspace that is missing a value leaves that field empty rather than
+     inventing one. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = (await fetch("/api/workspace", { cache: "no-store" }).then((r) => r.json())) as WorkspaceResponse;
+        if (cancelled) return;
+        const ws = d?.workspace ?? null;
+        setConfigured(!!ws);
+        if (!ws) return;
+        setBrand((v) => v || (ws.brand ?? ""));
+        setDomain((v) => v || (ws.domain ?? ""));
+        setCategory((v) => v || (ws.category ?? ""));
+        setCompetitors((v) => v || (ws.competitors ?? []).join(", "));
+      } catch {
+        if (!cancelled) setConfigured(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function run() {
     setBusy(true); setErr(null); setRes(null);
@@ -103,14 +143,23 @@ export default function ScanRunner() {
           Queries real LLMs right now and scores the answers with Answr's live scoring engine — genuine
           visibility, share of voice, and ranking computed from actual model output. Enter any brand and run it.
         </div>
+        {configured === false && (
+          <div style={{ fontSize: "12px", color: "var(--fnt)", marginTop: "8px", lineHeight: 1.6 }}>
+            No workspace is configured yet, so the form starts empty. Type any brand to scan it, or{" "}
+            <Link href="/onboarding/brand" style={{ color: "var(--ac)", textDecoration: "none" }}>
+              set up your brand
+            </Link>{" "}
+            to have it pre-filled here.
+          </div>
+        )}
       </div>
 
       {/* form */}
       <div style={{ ...card, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
-        <div><span style={label}>Brand</span><input style={input} value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
-        <div><span style={label}>Website (optional)</span><input style={input} value={domain} onChange={(e) => setDomain(e.target.value)} /></div>
+        <div><span style={label}>Brand</span><input style={input} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="the brand to scan" /></div>
+        <div><span style={label}>Website (optional)</span><input style={input} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="yourdomain.com" /></div>
         <div><span style={label}>Category</span><input style={input} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. project management tools" /></div>
-        <div><span style={label}>Competitors (comma-separated)</span><input style={input} value={competitors} onChange={(e) => setCompetitors(e.target.value)} /></div>
+        <div><span style={label}>Competitors (comma-separated)</span><input style={input} value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="who you are compared against" /></div>
         <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <button type="button" onClick={autofill} disabled={filling || !brand.trim()}
             style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "12.5px", fontWeight: 600, color: "var(--ac)", background: "rgba(142,124,242,0.10)", border: "1px solid color-mix(in oklab,var(--ac) 32%,transparent)", borderRadius: "8px", padding: "9px 14px", cursor: filling ? "default" : "pointer", fontFamily: "inherit", opacity: filling || !brand.trim() ? 0.6 : 1 }}>

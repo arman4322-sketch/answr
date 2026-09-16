@@ -1,140 +1,87 @@
-import { useSyncExternalStore } from "react";
-
-/* The workspace's tracked brands ("assets").
+/* Brand presentation helpers — types and derivations only, NO fixture data.
  *
- * Single source of truth for the two surfaces that show them: the sidebar brand
- * switcher and /app/assets. Headline stats are the /app/assets fixtures verbatim
- * — never recomputed, never rounded, never re-derived.
+ * This deployment tracks exactly ONE workspace (lib/workspace.ts): a brand, its
+ * domain, its category, its competitors and its prompt set. There is no list of
+ * brands to keep here, and no stats: every number belongs to lib/live/metrics.
  *
- * Demo honesty: this workspace ships fixtures for ONE brand (Nike). The other
- * properties are listed because a real workspace tracks several, but every
- * dashboard number you see belongs to Nike — selecting another brand says so
- * out loud rather than silently showing Nike's data under a different name.
+ * What is left is presentation: the square icon in the sidebar needs a letter
+ * and a colour, and neither is data. The letter is the brand's first character
+ * and the colour is picked deterministically from the name, so the same brand
+ * always renders the same square without anything being written down.
+ *
+ * Server components build this from `getWorkspace()` / `getLiveMetrics().workspace`
+ * and pass it down as props; client components never fetch a brand of their own.
  */
 
-export type Brand = {
-  id: string;
-  name: string;
-  domain: string;
-  /** category shown after the domain, e.g. "athletic footwear" */
-  category: string;
-  /** single letter in the square icon */
-  initial: string;
-  /** icon gradient, verbatim from the assets frame */
-  gradient: string;
-  /** headline stats — fixtures from /app/assets, unchanged */
-  visibility: string;
-  /** signed delta glyph + value, e.g. "↑2.8" */
-  delta: string;
-  deltaUp: boolean;
-  prompts: string;
-  /** plan quota suffix, e.g. "/550" */
-  promptQuota: string;
-  competitors: string;
-  /** named competitor set, where the workspace defines one */
-  competitorNames?: string[];
-  /** the one brand this demo actually has fixtures for */
-  live?: boolean;
-  /** lowercase haystack for the assets search box */
-  search: string;
+/** The minimum a caller needs to describe the tracked brand. Structurally a
+ *  `Workspace`, so `brandIdentity(workspace)` just works. */
+export type BrandSource = {
+  brand: string;
+  domain?: string;
+  category?: string;
 };
 
-export const BRANDS: Brand[] = [
-  {
-    id: "nike",
-    name: "Nike",
-    domain: "nike.com",
-    category: "athletic footwear",
-    initial: "N",
-    gradient: "linear-gradient(135deg,#a394ff,#6d5ce6)",
-    visibility: "34.2%",
-    delta: "↑2.8",
-    deltaUp: true,
-    prompts: "412",
-    promptQuota: "/550",
-    competitors: "4",
-    competitorNames: ["Adidas", "Brooks", "Asics", "New Balance"],
-    live: true,
-    search: "nike nike.com athletic footwear apparel running shoes",
-  },
-  {
-    id: "snkrs",
-    name: "Nike SNKRS",
-    domain: "snkrs.nike.com",
-    category: "sneaker releases",
-    initial: "S",
-    gradient: "linear-gradient(135deg,#7fd0e8,#3f8ab0)",
-    visibility: "11.8%",
-    delta: "↑1.2",
-    deltaUp: true,
-    prompts: "120",
-    promptQuota: "/200",
-    competitors: "3",
-    search: "nike snkrs snkrs.nike.com sneaker releases drops",
-  },
-  {
-    id: "jordan",
-    name: "Jordan Brand",
-    domain: "jordan.com",
-    category: "basketball footwear",
-    initial: "J",
-    gradient: "linear-gradient(135deg,#e8c47f,#b0823f)",
-    visibility: "22.4%",
-    delta: "↓0.6",
-    deltaUp: false,
-    prompts: "240",
-    promptQuota: "/250",
-    competitors: "6",
-    search: "jordan brand jordan.com basketball footwear sneakers",
-  },
-];
+/** Everything the UI needs to draw the brand — derived, never stored. */
+export type BrandIdentity = {
+  name: string;
+  /** "" when onboarding did not capture one */
+  domain: string;
+  /** "" when onboarding did not capture one */
+  category: string;
+  /** single letter for the square icon */
+  initial: string;
+  /** deterministic icon gradient, from the app's palette */
+  gradient: string;
+};
 
-export const LIVE_BRAND: Brand = BRANDS.find((b) => b.live) ?? BRANDS[0];
+/* Palette taken from the app's own tokens (accent, info blue, gold, good green,
+   rose). Which one a brand gets is a hash, not a fixture. */
+const GRADIENTS = [
+  "linear-gradient(135deg,#a394ff,#6d5ce6)",
+  "linear-gradient(135deg,#7fd0e8,#3f8ab0)",
+  "linear-gradient(135deg,#e8c47f,#b0823f)",
+  "linear-gradient(135deg,#7fd6a8,#3f8a63)",
+  "linear-gradient(135deg,#e89aa0,#b04f58)",
+] as const;
 
-/** Honest line shown when a read-only brand is picked in the switcher. */
-export const SWITCH_NOTE =
-  "Nike is the demo workspace's live brand — the others are read-only here.";
+/** Neutral square for the "nothing configured yet" state. */
+export const UNCONFIGURED_GRADIENT = "linear-gradient(135deg,#3e4046,#26272b)";
 
-/** Honest line shown after the add-brand form validates. */
-export const ADD_BRAND_NOTE =
-  "Brand setup completes on live workspaces — this demo ships Nike's fixtures only.";
+function hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
 
-/* ---- selected-brand store -------------------------------------------------
-   Deliberately tiny and in-memory: the sidebar (rendered by the dashboard
-   layout) and /app/assets have no common React parent we own, so they share
-   this module-level value instead. It survives client-side navigation and
-   resets to the live brand on a hard reload — no persistence, no hydration
-   mismatch (server and first client render both read BRANDS[0]).            */
+/** Stable icon gradient for a brand name. */
+export function brandGradient(name: string): string {
+  const key = name.trim().toLowerCase();
+  if (!key) return UNCONFIGURED_GRADIENT;
+  return GRADIENTS[hash(key) % GRADIENTS.length];
+}
 
-let selectedId: string = LIVE_BRAND.id;
-const listeners = new Set<() => void>();
+/** First letter of the brand name, uppercased. Falls back to "·" for names that
+ *  start with something unprintable. */
+export function brandInitial(name: string): string {
+  const letter = name.trim().match(/[\p{L}\p{N}]/u)?.[0];
+  return letter ? letter.toUpperCase() : "·";
+}
 
-function subscribe(fn: () => void) {
-  listeners.add(fn);
-  return () => {
-    listeners.delete(fn);
+/** Presentation identity for the configured workspace, or null when there is
+ *  none — callers render an honest setup state rather than a placeholder. */
+export function brandIdentity(ws: BrandSource | null | undefined): BrandIdentity | null {
+  const name = ws?.brand?.trim();
+  if (!name) return null;
+  return {
+    name,
+    domain: ws?.domain?.trim() ?? "",
+    category: ws?.category?.trim() ?? "",
+    initial: brandInitial(name),
+    gradient: brandGradient(name),
   };
 }
 
-function getSnapshot() {
-  return selectedId;
-}
-
-function getServerSnapshot() {
-  return LIVE_BRAND.id;
-}
-
-export function setSelectedBrand(id: string) {
-  if (id === selectedId) return;
-  selectedId = id;
-  listeners.forEach((fn) => fn());
-}
-
-export function brandById(id: string): Brand {
-  return BRANDS.find((b) => b.id === id) ?? LIVE_BRAND;
-}
-
-/** Client components only. */
-export function useSelectedBrand(): Brand {
-  return brandById(useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot));
+/** "domain · category", with whichever halves exist. Empty when neither does. */
+export function brandSubtitle(b: BrandIdentity): string {
+  return [b.domain, b.category].filter(Boolean).join(" · ");
 }

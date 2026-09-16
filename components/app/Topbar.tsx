@@ -35,7 +35,7 @@ export const PLATFORM_ITEMS = PLATFORM_LABELS;
 
 export default function Topbar({
   crumb,
-  brand = "Nike",
+  brand = "Your brand",
   extra,
   showDateRange = true,
   showPlatforms = true,
@@ -52,8 +52,9 @@ export default function Topbar({
   rangeNote,
 }: {
   crumb: string | string[];
-  /** workspace name at the head of the crumb — screens on live data pass the
-      real configured brand; fixture screens keep the demo default */
+  /** workspace name at the head of the crumb — every screen should pass the
+      real configured brand. The neutral fallback exists so a screen that has
+      not been wired yet cannot print a brand that isn't the workspace's. */
   brand?: string;
   extra?: React.ReactNode;
   showDateRange?: boolean;
@@ -113,6 +114,7 @@ export default function Topbar({
               filename={exportFilename}
               report={exportReport}
               rows={exportRows}
+              brand={brand}
               module={exportModule ?? (Array.isArray(crumb) ? crumb[crumb.length - 1] : crumb)}
               window={exportWindow}
             />

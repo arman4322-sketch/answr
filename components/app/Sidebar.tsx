@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import NavIcon from "./nav-icons";
 import BrandSwitcher from "./BrandSwitcher";
-import AccountMenu from "./AccountMenu";
+import AccountMenu, { type AccountUser } from "./AccountMenu";
+import type { BrandIdentity } from "@/lib/brands";
 import "./sidebar.css";
 
 /* Left navigation — built to NAVIGATION.md (design rev 8).
@@ -76,7 +77,17 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function Sidebar({ counts }: { counts?: SidebarCounts } = {}) {
+export default function Sidebar({
+  counts,
+  brand = null,
+  user,
+}: {
+  counts?: SidebarCounts;
+  /** the configured workspace brand, or null when none is set up */
+  brand?: BrandIdentity | null;
+  /** the signed-in account, when access came from a session rather than the gate */
+  user?: AccountUser;
+} = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -145,7 +156,7 @@ export default function Sidebar({ counts }: { counts?: SidebarCounts } = {}) {
         transition: "width .16s ease",
       }}
     >
-      <BrandSwitcher collapsed={collapsed} onToggleCollapse={toggle} />
+      <BrandSwitcher brand={brand} collapsed={collapsed} onToggleCollapse={toggle} />
 
       {/* Search — opens the ⌘K palette */}
       <button
@@ -286,7 +297,7 @@ export default function Sidebar({ counts }: { counts?: SidebarCounts } = {}) {
       ))}
 
       <div style={{ marginTop: "auto", width: "100%", paddingTop: "14px" }}>
-        <AccountMenu collapsed={collapsed} />
+        <AccountMenu collapsed={collapsed} brand={brand} user={user} />
       </div>
     </nav>
   );

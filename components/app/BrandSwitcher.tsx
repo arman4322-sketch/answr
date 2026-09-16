@@ -1,40 +1,49 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "@/lib/toast";
-import { BRANDS, SWITCH_NOTE, setSelectedBrand, useSelectedBrand, type Brand } from "@/lib/brands";
-import AddBrandModal from "./AddBrandModal";
+import { brandSubtitle, UNCONFIGURED_GRADIENT, type BrandIdentity } from "@/lib/brands";
 
-/* Sidebar brand switcher — the panel canvas frame 06a depicted but never wired.
-   The "Answr · Nike" line is the trigger; the panel lists every tracked brand
-   with its visibility stat, ticks the selected one, and ends with "+ Add a
-   brand" and "View all assets →".
+/* Sidebar workspace row — the panel canvas frame 06a depicted, wired to the one
+   workspace this deployment actually tracks.
+
+   There is no brand list any more, because there is no multi-brand product: a
+   deployment has exactly one configured workspace (lib/workspace.ts) and every
+   dashboard reads it. The trigger shows that brand and its domain; the panel
+   shows it in full and points at the two places it can be changed. With nothing
+   configured the row says so plainly and links to onboarding — it never invents
+   a brand to fill the space.
+
+   `brand` comes from the dashboard layout (a server component that already
+   loads the live layer), so this component holds no data of its own.
 
    The panel is position:fixed and anchored to the trigger's rect because the
    sidebar scrolls (overflow-y:auto), which would clip a 290px absolutely
-   positioned child inside a 236px rail.
-
-   Honesty: the demo ships one brand's fixtures, so picking another keeps the
-   selection in the UI and says plainly that the rest are read-only. */
+   positioned child inside a 236px rail. */
 
 const PANEL_W = 290;
 
 export default function BrandSwitcher({
+  brand = null,
   collapsed = false,
   onToggleCollapse,
 }: {
+  brand?: BrandIdentity | null;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 } = {}) {
   const router = useRouter();
-  const brand = useSelectedBrand();
   const btnRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [trigHover, setTrigHover] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+
+  const name = brand?.name ?? "No brand configured";
+  /* The rail is 232px, so the trigger's second line is the domain alone — the
+     full "domain · category" belongs in the panel, where it fits. */
+  const subtitle = brand ? brand.domain || brand.category || "Answr workspace" : "Set up your brand";
 
   // One menu at a time — opening the account menu closes this one.
   useEffect(() => {
@@ -76,14 +85,9 @@ export default function BrandSwitcher({
     setOpen(true);
   }
 
-  function choose(b: Brand) {
-    setSelectedBrand(b.id);
-    setOpen(false);
-    toast(SWITCH_NOTE);
-  }
-
-  /* Row background: selection wins, then hover, then nothing. Done in React
-     rather than CSS because inline styles would beat any :hover rule anyway. */
+  /* Row background: the current workspace reads as selected, then hover, then
+     nothing. Done in React rather than CSS because inline styles would beat any
+     :hover rule anyway. */
   function rowBg(id: string, selected: boolean) {
     if (selected) return "rgba(142,124,242,0.12)";
     return hover === id ? "rgba(255,255,255,0.04)" : "transparent";
@@ -96,6 +100,24 @@ export default function BrandSwitcher({
     onBlur: () => setHover((h) => (h === id ? null : h)),
   });
 
+  const linkRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    padding: "7px 8px",
+    fontSize: "11.5px",
+    color: "var(--tx)",
+    fontWeight: 500,
+    borderRadius: "7px",
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    textAlign: "left",
+    textDecoration: "none",
+    marginTop: "2px",
+  };
+
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
@@ -105,8 +127,8 @@ export default function BrandSwitcher({
           onClick={toggle}
           aria-haspopup="menu"
           aria-expanded={open}
-          aria-label={`Workspace brand: ${brand.name}. Switch brand`}
-          title={collapsed ? `${brand.name} — switch brand` : undefined}
+          aria-label={brand ? `Workspace brand: ${brand.name}. Open workspace menu` : "No brand configured. Open workspace menu"}
+          title={collapsed ? (brand ? `${brand.name} — workspace` : "No brand configured") : undefined}
           onMouseEnter={() => setTrigHover(true)}
           onMouseLeave={() => setTrigHover(false)}
           onFocus={() => setTrigHover(true)}
@@ -134,25 +156,48 @@ export default function BrandSwitcher({
               width: "20px",
               height: "20px",
               borderRadius: "6px",
-              background: brand.gradient,
+              background: brand ? brand.gradient : UNCONFIGURED_GRADIENT,
+              border: brand ? undefined : "1px dashed var(--brd)",
+              boxSizing: "border-box",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "11px",
               fontWeight: 700,
-              color: "#fff",
+              color: brand ? "#fff" : "var(--fnt)",
               flex: "none",
             }}
           >
-            {brand.initial}
+            {brand ? brand.initial : "?"}
           </span>
           {!collapsed && (
             <>
               <span style={{ minWidth: 0, lineHeight: 1.25 }}>
-                <span style={{ display: "block", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {brand.name}
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    color: brand ? "var(--tx)" : "var(--mut)",
+                  }}
+                >
+                  {name}
                 </span>
-                <span style={{ display: "block", fontSize: "10.5px", color: "var(--fnt)", whiteSpace: "nowrap" }}>Answr workspace</span>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10.5px",
+                    color: "var(--fnt)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {subtitle}
+                </span>
               </span>
               <span style={{ marginLeft: "auto", color: "var(--fnt)", fontSize: "11px", flex: "none" }}>⇅</span>
             </>
@@ -212,7 +257,7 @@ export default function BrandSwitcher({
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
           <div
             role="menu"
-            aria-label="Switch brand"
+            aria-label="Workspace"
             style={{
               position: "fixed",
               top: `${pos.top}px`,
@@ -227,108 +272,96 @@ export default function BrandSwitcher({
             }}
           >
             <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--fnt)", letterSpacing: ".08em", padding: "6px 8px 4px" }}>
-              {"SWITCH BRAND"}
+              {"WORKSPACE"}
             </div>
 
-            {BRANDS.map((b) => {
-              const selected = b.id === brand.id;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={selected}
-                  onClick={() => choose(b)}
-                  {...rowProps(b.id)}
+            {brand ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  padding: "7px 8px",
+                  borderRadius: "7px",
+                  width: "100%",
+                  background: rowBg("brand", true),
+                }}
+              >
+                <span
                   style={{
+                    width: "22px",
+                    height: "22px",
+                    borderRadius: "6px",
+                    background: brand.gradient,
                     display: "flex",
                     alignItems: "center",
-                    gap: "9px",
-                    padding: "7px 8px",
-                    borderRadius: "7px",
-                    width: "100%",
-                    background: rowBg(b.id, selected),
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    textAlign: "left",
+                    justifyContent: "center",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "#fff",
+                    flex: "none",
                   }}
                 >
+                  {brand.initial}
+                </span>
+                <span style={{ minWidth: 0 }}>
                   <span
                     style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "6px",
-                      background: b.gradient,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: "#fff",
-                      flex: "none",
+                      display: "block",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                      color: "var(--tx)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    {b.initial}
+                    {brand.name}
                   </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: "12.5px", fontWeight: selected ? 600 : 500, color: selected ? "var(--tx)" : "var(--mut)" }}>
-                      {b.name}
-                    </span>
-                    <span style={{ display: "block", fontSize: "10px", color: "var(--fnt)", fontVariantNumeric: "tabular-nums" }}>
-                      {`${b.domain} · ${b.visibility} visibility`}
-                    </span>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "10px",
+                      color: "var(--fnt)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {brandSubtitle(brand) || "Tracked brand"}
                   </span>
-                  {selected && (
-                    <span style={{ marginLeft: "auto", color: "var(--ac)", fontWeight: 700, fontSize: "12px", flex: "none" }}>{"✓"}</span>
-                  )}
-                </button>
-              );
-            })}
+                </span>
+                <span style={{ marginLeft: "auto", color: "var(--ac)", fontWeight: 700, fontSize: "12px", flex: "none" }}>{"✓"}</span>
+              </div>
+            ) : (
+              <div style={{ padding: "4px 8px 8px", fontSize: "11.5px", color: "var(--mut)", lineHeight: 1.5 }}>
+                {"No brand is configured yet, so nothing is being sampled. Answr tracks one brand per deployment — name it and the first scan follows."}
+              </div>
+            )}
+
+            {brand && (
+              <div style={{ fontSize: "10.5px", color: "var(--fnt)", lineHeight: 1.5, padding: "8px 8px 2px" }}>
+                {"This deployment tracks a single brand — change it in brand settings."}
+              </div>
+            )}
 
             <div style={{ height: "1px", background: "var(--brd)", margin: "6px 4px" }} />
 
-            <button
-              type="button"
+            <Link
+              href={brand ? "/app/settings" : "/onboarding/brand"}
               role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                setAddOpen(true);
-              }}
-              {...rowProps("add")}
+              onClick={() => setOpen(false)}
+              {...rowProps("settings")}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "9px",
-                padding: "7px 8px",
-                borderRadius: "7px",
-                width: "100%",
+                ...linkRow,
                 color: "var(--ac)",
                 fontSize: "12.5px",
-                fontWeight: 500,
-                background: hover === "add" ? "rgba(255,255,255,0.04)" : "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                textAlign: "left",
+                background: hover === "settings" ? "rgba(255,255,255,0.04)" : "transparent",
               }}
             >
-              <span
-                style={{
-                  width: "22px",
-                  height: "22px",
-                  borderRadius: "6px",
-                  border: "1px dashed color-mix(in oklab,var(--ac) 50%,transparent)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flex: "none",
-                }}
-              >
-                {"+"}
-              </span>
-              {"Add a brand"}
-            </button>
+              <span>{brand ? "Brand settings" : "Set up your brand"}</span>
+              <span style={{ color: "var(--fnt)" }}>{"→"}</span>
+            </Link>
 
             <button
               type="button"
@@ -339,21 +372,8 @@ export default function BrandSwitcher({
               }}
               {...rowProps("all")}
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                padding: "7px 8px",
-                fontSize: "11.5px",
-                color: "var(--tx)",
-                fontWeight: 500,
+                ...linkRow,
                 background: hover === "all" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.05)",
-                borderRadius: "7px",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                textAlign: "left",
-                marginTop: "2px",
               }}
             >
               <span>{"View all assets"}</span>
@@ -362,8 +382,6 @@ export default function BrandSwitcher({
           </div>
         </>
       )}
-
-      <AddBrandModal open={addOpen} onClose={() => setAddOpen(false)} />
     </>
   );
 }

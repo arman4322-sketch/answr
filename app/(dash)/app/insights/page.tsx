@@ -1,51 +1,381 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
-import FilterPill from "@/components/ui/FilterPill";
 import Hint from "@/components/ui/Hint";
-import { Fragment } from "react";
+import { getLiveMetrics } from "@/lib/live/metrics";
 import InsightsTabs from "./InsightsTabs";
-import RangeTrend from "./RangeTrend";
-import HeatCell from "./HeatCell";
-import ToastButton from "./ToastButton";
-import { aeiHeatPlatforms, aeiHeatRows, visibilityByBrandSeries } from "@/lib/data/insights";
+import AeiTrend from "./AeiTrend";
 import { topicsSpec } from "./reports";
+import { historyNote, int, pct, s, stampUTC } from "./aei-format";
 
 export const metadata: Metadata = { title: "Answer Engine Insights" };
+export const dynamic = "force-dynamic";
 
-const FILTER_NOTE = "This filter needs a live workspace — the demo ships one fixture set for this list.";
+/* Answer Engine Insights — the main screen, on live data.
 
-const TOPIC_FILTER_ITEMS = ["All topics", "Running shoes", "Training apparel", "Sneaker releases", "Sustainability", "Basketball gear"];
+   Server component: one getLiveMetrics() call feeds the whole screen, so there
+   is a single source of truth and nothing is assembled in the browser. The
+   lib/data/insights fixtures are gone.
 
-/* Answer Engine Insights — Topics — converted from canvas frame #aei.
-   Topic mix (sale-readiness pass): counts re-derived so Running shoes leads for a
-   running/training brand, still summing to 412 (132+108+84+48+40). Visibility
-   percentages untouched.
-   Wired (W2): share-of-voice chart → TrendChart (data: lib/data/insights.ts,
-   Nike ends 34.2 per the fixture story); heatmap cells → HeatCell with live
-   hover tooltips (the frame's painted first-cell tooltip/outline is now the
-   real hover state); axis dates now match the Jul 7 – Aug 5 window; export
-   label "1.3k" → "1,312"; topics-table rows get row-hover.
-   Export downloads the full executive report for this screen (./reports.ts):
-   headline metrics with plain-English reads, the daily share-of-voice trend,
-   the topics table and the topic × platform heatmap.
-   Live filters (F9): the date range re-slices the share-of-voice trend and its
-   axes (<RangeTrend>). The topics table and the heatmap are per-topic Δ30d
-   fixtures with no daily history behind them, so they keep saying "30d". */
-export default function Page() {
+   What is measured, and is therefore rendered:
+   - the daily visibility / share-of-voice series (hidden below two sampled days,
+     because one point is not a trend),
+   - the brand comparison, from the tracked brand set's measured mentions,
+   - per-platform visibility, from the engines that actually answered.
+
+   What is NOT measured, and is therefore not rendered: anything per topic. The
+   sampler stores prompts without a subject tag, so "Visibility by topic ×
+   platform", the Topics table and "Topic movers" had no live source at all.
+   They are replaced by one panel that says exactly what would have to exist —
+   no estimated heatmap, no invented per-topic deltas.
+
+   Honest scope: the topbar's date-range and platform pills are not rendered.
+   They re-slice a 30-day fixture window that no longer backs this screen; the
+   scope chip states the history the corpus really has. The sub-tab nav is
+   untouched, so Topics / Regions / Audiences / Shopping / Sentiment still
+   navigate. */
+
+const CARD: React.CSSProperties = {
+  background: "var(--bg1)",
+  border: "1px solid var(--brd)",
+  borderRadius: "10px",
+  padding: "18px 20px",
+};
+
+function CardNote({ title, body }: { title: string; body: string }) {
+  return (
+    <div
+      style={{
+        border: "1px dashed var(--brd)",
+        borderRadius: "8px",
+        background: "var(--bg0)",
+        padding: "16px 14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "5px",
+      }}
+    >
+      <div style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--tx)" }}>{title}</div>
+      <div style={{ fontSize: "11.5px", color: "var(--mut)", lineHeight: 1.55 }}>{body}</div>
+    </div>
+  );
+}
+
+export default async function Page() {
+  const m = await getLiveMetrics();
+  const brand = m.workspace?.brand ?? "Your brand";
+  const slug = (m.workspace?.brand ?? "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const scope = !m.configured
+    ? "Not set up"
+    : !m.hasData
+      ? "Collecting · no runs yet"
+      : `${historyNote(m.days)}${m.lastRunAt ? ` · last run ${stampUTC(m.lastRunAt)}` : ""}`;
+
+  const answersInLatestRun = m.platforms.reduce((t, p) => t + p.answers, 0);
+
   return (
     <div className="frame-aei">
       <Topbar
         crumb={["Answer Engine Insights", "Topics"]}
-        extra={<FilterPill label="All topics" items={TOPIC_FILTER_ITEMS} note={FILTER_NOTE} />}
+        brand={brand}
+        showDateRange={false}
         showPlatforms={false}
-        rangeLive
-        exportLabel="Export 1,312 answers"
-        exportFilename="nike-insights-topics-30d.csv"
-        exportReport={topicsSpec}
+        extra={
+          <span
+            style={{
+              fontSize: "11.5px",
+              color: "var(--mut)",
+              background: "rgba(255,255,255,0.045)",
+              borderRadius: "7px",
+              padding: "6px 12px",
+              fontVariantNumeric: "tabular-nums",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {scope}
+          </span>
+        }
+        exportLabel={m.hasData ? `Export ${int(m.answersSampled)} answer${s(m.answersSampled)}` : "Export"}
+        exportFilename={`${slug || "workspace"}-insights-${m.days}d.csv`}
+        exportReport={m.hasData ? topicsSpec(m) : undefined}
+        actionNote={
+          m.configured
+            ? "Nothing to export yet — the first sample runs tonight."
+            : "Nothing to export yet — set up your brand to start collecting data."
+        }
       />
       <InsightsTabs />
-      <div style={{padding:"24px",display:"flex",flexDirection:"column",gap:"20px"}}><div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:"16px"}}><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"18px 20px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{fontSize:"14.5px",fontWeight:"600"}}><span style={{display:"inline-flex",alignItems:"center",gap:"6px"}}>{"Visibility — all tracked prompts"}<Hint text="How often AI mentions you when people ask" /></span></div><div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"3px"}}>{"% of AI answers where each brand is mentioned"}</div></div><div style={{display:"flex",gap:"14px",fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{width:"8px",height:"2px",background:"var(--ac)"}} />{"Nike"}</div><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{width:"8px",height:"2px",background:"#7fa7d9"}} />{"Adidas"}</div><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{width:"8px",height:"2px",background:"#b98ed9"}} />{"Brooks"}</div><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{width:"8px",height:"2px",background:"#d9b679"}} />{"Asics"}</div></div></div><RangeTrend series={visibilityByBrandSeries} seed="insights:sov" yLabels={["40%", "30%", "20%", "10%"]} yDomain={[10, 40]} width={690} height={250} marginTop="14px" /></div><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"18px 20px"}}><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{fontSize:"14.5px",fontWeight:"600"}}>{"Topic movers · 7d"}</div><Hint text="Subjects rising or falling this week" align="right" /></div><div style={{display:"flex",flexDirection:"column",marginTop:"12px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:"1px solid var(--brd)"}}><div><div style={{fontSize:"13px",fontWeight:"500"}}>{"Running shoes"}</div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"2px"}}>{"132 prompts"}</div></div><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 6.2pt"}</span></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:"1px solid var(--brd)"}}><div><div style={{fontSize:"13px",fontWeight:"500"}}>{"Training apparel"}</div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"2px"}}>{"108 prompts"}</div></div><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 3.8pt"}</span></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:"1px solid var(--brd)"}}><div><div style={{fontSize:"13px",fontWeight:"500"}}>{"Sneaker releases"}</div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"2px"}}>{"84 prompts"}</div></div><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 1.4pt"}</span></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:"1px solid var(--brd)"}}><div><div style={{fontSize:"13px",fontWeight:"500"}}>{"Sustainability"}</div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"2px"}}>{"48 prompts"}</div></div><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#e5636e"}}>{"↓ 2.1pt"}</span></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0"}}><div><div style={{fontSize:"13px",fontWeight:"500"}}>{"Basketball gear"}</div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"2px"}}>{"40 prompts"}</div></div><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#e5636e"}}>{"↓ 0.7pt"}</span></div></div></div></div><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"18px 20px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{fontSize:"14.5px",fontWeight:"600"}}>{"Visibility by topic × platform"}</div><Hint text="How often each AI names you, per subject" /></div><div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)"}}>{"cell = % of answers mentioning Nike"}</div></div><div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr)",gap:"6px",marginTop:"16px",alignItems:"center"}}><div /><div style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".1em",textTransform:"uppercase",color:"var(--fnt)",textAlign:"center"}}>{"ChatGPT"}</div><div style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".1em",textTransform:"uppercase",color:"var(--fnt)",textAlign:"center"}}>{"Perplexity"}</div><div style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".1em",textTransform:"uppercase",color:"var(--fnt)",textAlign:"center"}}>{"AI Overviews"}</div><div style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".1em",textTransform:"uppercase",color:"var(--fnt)",textAlign:"center"}}>{"Claude"}</div><div style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".1em",textTransform:"uppercase",color:"var(--fnt)",textAlign:"center"}}>{"Gemini"}</div>{aeiHeatRows.map((row) => (<Fragment key={row.topic}><div style={{fontSize:"12.5px",color:"var(--mut)"}}>{row.topic}</div>{row.cells.map((c, i) => (<HeatCell key={aeiHeatPlatforms[i]} topic={row.topic} platform={aeiHeatPlatforms[i]} visibility={c.visibility} delta={c.delta} align={i === aeiHeatPlatforms.length - 1 ? "right" : "center"} />))}</Fragment>))}</div></div><div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",overflow:"hidden"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 12px"}}><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{fontSize:"14.5px",fontWeight:"600"}}>{"Topics"}</div><Hint text="Subject areas we track for you" /></div><ToastButton message="Managing topics needs a live workspace — this demo is read-only." style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--ac)",background:"none",border:"none",padding:"0",cursor:"pointer",fontFamily:"inherit"}}>{"Manage topics →"}</ToastButton></div><div style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",padding:"8px 20px",fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".12em",textTransform:"uppercase",color:"var(--fnt)",borderBottom:"1px solid var(--brd)"}}><span>{"Topic"}</span><span style={{display:"inline-flex",alignItems:"center",gap:"5px"}}>{"Prompts"}<Hint text="Questions we ask AI for you" size={12} /></span><span style={{display:"inline-flex",alignItems:"center",gap:"5px"}}>{"Visibility"}<Hint text="How often AI mentions you when people ask" size={12} /></span><span>{"Δ 30d"}</span><span style={{display:"inline-flex",alignItems:"center",gap:"5px"}}>{"Best platform"}<Hint text="The AI where you show up most" size={12} /></span><span style={{display:"inline-flex",alignItems:"center",gap:"5px"}}>{"Leading brand"}<Hint text="Brand AI names most here" size={12} align="right" /></span></div><div className="row-hover" style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",alignItems:"center",padding:"12px 20px",fontSize:"13px"}}><span><Link href="/app/insights/topics/running-shoes" style={{fontWeight:"500",color:"var(--tx)"}}>{"Running shoes"}</Link></span><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{"132"}</span><span style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{"42.6%"}</span><span style={{width:"80px",height:"4px",background:"var(--bg2)",borderRadius:"2px",display:"inline-block"}}><span style={{display:"block",width:"43%",height:"4px",background:"var(--ac)",borderRadius:"2px"}} /></span></span><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 6.2"}</span><span style={{color:"var(--mut)"}}>{"ChatGPT"}</span><span style={{display:"flex",alignItems:"center",gap:"7px",fontWeight:"500"}}><span style={{width:"6px",height:"6px",borderRadius:"2px",background:"var(--ac)"}} />{"Nike"}</span></div><div className="row-hover" style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",alignItems:"center",padding:"12px 20px",fontSize:"13px",borderTop:"1px solid var(--brd)"}}><span style={{fontWeight:"500"}}>{"Training apparel"}</span><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{"108"}</span><span style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{"38.1%"}</span><span style={{width:"80px",height:"4px",background:"var(--bg2)",borderRadius:"2px",display:"inline-block"}}><span style={{display:"block",width:"38%",height:"4px",background:"var(--ac)",borderRadius:"2px"}} /></span></span><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 3.8"}</span><span style={{color:"var(--mut)"}}>{"ChatGPT"}</span><span style={{display:"flex",alignItems:"center",gap:"7px",fontWeight:"500"}}><span style={{width:"6px",height:"6px",borderRadius:"2px",background:"var(--ac)"}} />{"Nike"}</span></div><div className="row-hover" style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",alignItems:"center",padding:"12px 20px",fontSize:"13px",borderTop:"1px solid var(--brd)"}}><span style={{fontWeight:"500"}}>{"Sneaker releases"}</span><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{"84"}</span><span style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{"29.4%"}</span><span style={{width:"80px",height:"4px",background:"var(--bg2)",borderRadius:"2px",display:"inline-block"}}><span style={{display:"block",width:"29%",height:"4px",background:"var(--ac)",borderRadius:"2px"}} /></span></span><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#4cb782"}}>{"↑ 1.4"}</span><span style={{color:"var(--mut)"}}>{"Perplexity"}</span><span style={{display:"flex",alignItems:"center",gap:"7px"}}><span style={{width:"6px",height:"6px",borderRadius:"2px",background:"#7fa7d9"}} />{"Adidas"}</span></div><div className="row-hover" style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",alignItems:"center",padding:"12px 20px",fontSize:"13px",borderTop:"1px solid var(--brd)"}}><span style={{fontWeight:"500"}}>{"Sustainability"}</span><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{"48"}</span><span style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{"18.7%"}</span><span style={{width:"80px",height:"4px",background:"var(--bg2)",borderRadius:"2px",display:"inline-block"}}><span style={{display:"block",width:"19%",height:"4px",background:"var(--ac)",borderRadius:"2px"}} /></span></span><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#e5636e"}}>{"↓ 2.1"}</span><span style={{color:"var(--mut)"}}>{"Claude"}</span><span style={{display:"flex",alignItems:"center",gap:"7px"}}><span style={{width:"6px",height:"6px",borderRadius:"2px",background:"#d9b679"}} />{"Asics"}</span></div><div className="row-hover" style={{display:"grid",gridTemplateColumns:"1.6fr .7fr 1fr .7fr 1fr 1fr",alignItems:"center",padding:"12px 20px",fontSize:"13px",borderTop:"1px solid var(--brd)"}}><span style={{fontWeight:"500"}}>{"Basketball gear"}</span><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{"40"}</span><span style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{"14.2%"}</span><span style={{width:"80px",height:"4px",background:"var(--bg2)",borderRadius:"2px",display:"inline-block"}}><span style={{display:"block",width:"14%",height:"4px",background:"var(--ac)",borderRadius:"2px"}} /></span></span><span style={{fontSize:"12px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"#e5636e"}}>{"↓ 0.7"}</span><span style={{color:"var(--mut)"}}>{"Gemini"}</span><span style={{display:"flex",alignItems:"center",gap:"7px"}}><span style={{width:"6px",height:"6px",borderRadius:"2px",background:"#b98ed9"}} />{"Brooks"}</span></div></div></div>
+
+      {!m.configured ? (
+        <div style={{ padding: "24px" }}>
+          <div style={{ ...CARD, padding: "26px 28px", maxWidth: "620px" }}>
+            <div style={{ fontSize: "15px", fontWeight: 600 }}>Set up your brand to start collecting data</div>
+            <div style={{ fontSize: "13px", color: "var(--mut)", lineHeight: 1.7, marginTop: "10px" }}>
+              This screen reports how often AI assistants name your brand when they answer your tracked prompts. Nothing
+              has been measured yet because no workspace is configured — name the brand, its domain and the competitors
+              to track, and the sampler starts collecting answers on its next run. Until then it stays empty rather than
+              showing numbers that are not yours.
+            </div>
+            <div style={{ display: "flex", gap: "9px", marginTop: "18px", flexWrap: "wrap" }}>
+              <Link
+                href="/onboarding/brand"
+                style={{ padding: "9px 15px", background: "var(--ac)", borderRadius: "7px", color: "#0e0e11", fontSize: "12.5px", fontWeight: 600 }}
+              >
+                Set up your brand →
+              </Link>
+              <Link
+                href="/app/settings"
+                style={{ padding: "9px 15px", background: "var(--bg0)", border: "1px solid var(--brd)", borderRadius: "7px", color: "var(--tx)", fontSize: "12.5px", fontWeight: 500 }}
+              >
+                Open settings
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          {!m.hasData && (
+            <div
+              role="note"
+              style={{
+                fontSize: "12px",
+                lineHeight: 1.55,
+                color: "var(--mut)",
+                background: "var(--bg1)",
+                border: "1px solid var(--brd)",
+                borderRadius: "8px",
+                padding: "10px 14px",
+              }}
+            >
+              <span style={{ color: "var(--tx)", fontWeight: 500 }}>Collecting — first sample runs tonight.</span>{" "}
+              {`${brand} is configured with ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}. Nothing has been sampled yet, so this screen has no figures to show — not because visibility is zero.`}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "16px" }}>
+            {/* ── visibility over time — the sampled series only ── */}
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+                <div>
+                  <div style={{ fontSize: "14.5px", fontWeight: 600 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                      {"Visibility — all tracked prompts"}
+                      <Hint text="How often AI mentions you when people ask" />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--fnt)", marginTop: "3px" }}>
+                    {`% of sampled AI answers naming ${brand}, per day the sampler ran`}
+                  </div>
+                </div>
+                {m.series.length >= 2 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "14px",
+                      fontSize: "11px",
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--mut)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <div style={{ width: "8px", height: "2px", background: "var(--ac)" }} />
+                      {"Visibility"}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <div style={{ width: "8px", height: "2px", background: "#7fa7d9" }} />
+                      {"Share of voice"}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {m.series.length >= 2 ? (
+                <AeiTrend series={m.series} brand={brand} days={m.days} />
+              ) : (
+                <div style={{ marginTop: "14px" }}>
+                  <CardNote
+                    title={m.hasData ? `Collecting history — ${historyNote(m.days)}` : "Collecting — first sample runs tonight"}
+                    body={
+                      m.hasData
+                        ? `A trend needs at least two sampled days. Today's measured figures are beside this card; the line appears after the next run. Current visibility ${pct(m.visibilityScore)}, share of voice ${pct(m.shareOfVoice)}.`
+                        : "Nothing has been sampled yet. This chart draws its first line once two days of runs exist."
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ── brand comparison — measured mentions, no per-brand trend ── */}
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Brand visibility"}</div>
+                <Hint text="Your slice of brand mentions versus rivals" align="right" />
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--fnt)", marginTop: "3px" }}>
+                {"Share of all tracked-brand mentions in sampled answers"}
+              </div>
+
+              {m.brands.length === 0 ? (
+                <div style={{ marginTop: "14px" }}>
+                  <CardNote
+                    title="Collecting — first sample runs tonight"
+                    body="Your brand and its tracked competitors appear here with their measured mention counts as soon as the first answers land."
+                  />
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", marginTop: "12px" }}>
+                    {m.brands.map((b, i) => (
+                      <div
+                        key={b.name}
+                        className="row-hover"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "12px",
+                          padding: "11px 0",
+                          borderBottom: i === m.brands.length - 1 ? undefined : "1px solid var(--brd)",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "2px",
+                                background: b.isBrand ? "var(--ac)" : "#7fa7d9",
+                                flex: "none",
+                              }}
+                            />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                            {b.isBrand && (
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  color: "#b3a7f8",
+                                  background: "rgba(142,124,242,0.16)",
+                                  borderRadius: "4px",
+                                  padding: "2px 6px",
+                                }}
+                              >
+                                {"You"}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "11px", fontVariantNumeric: "tabular-nums", color: "var(--fnt)", marginTop: "2px" }}>
+                            {`${int(b.mentions)} answer${s(b.mentions)} naming it`}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "none" }}>
+                          <span style={{ width: "70px", height: "4px", background: "var(--bg2)", borderRadius: "2px", display: "inline-block" }}>
+                            <span
+                              style={{
+                                display: "block",
+                                width: `${Math.max(0, Math.min(100, Math.round(b.share)))}%`,
+                                height: "4px",
+                                background: b.isBrand ? "var(--ac)" : "#7fa7d9",
+                                borderRadius: "2px",
+                              }}
+                            />
+                          </span>
+                          <span style={{ fontSize: "12.5px", fontWeight: 500, fontVariantNumeric: "tabular-nums", width: "48px", textAlign: "right" }}>
+                            {pct(b.share)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--fnt)", lineHeight: 1.55, marginTop: "12px" }}>
+                    {`Counted per sampled answer across ${historyNote(m.days)}; rows sum to 100%. Per-brand change over time is not shown — the store keeps competitor mentions in aggregate, not as a daily series per brand.`}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── per-platform visibility — engines that actually answered ── */}
+          <div style={CARD}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Visibility by platform"}</div>
+                <Hint text="How often each AI mentions you" />
+              </div>
+              <div style={{ fontSize: "11px", fontVariantNumeric: "tabular-nums", color: "var(--fnt)" }}>
+                {`answers naming ${brand} ÷ answers that platform returned`}
+              </div>
+            </div>
+
+            {m.platforms.length === 0 ? (
+              <div style={{ marginTop: "16px" }}>
+                <CardNote
+                  title={m.hasData ? "No platform answers in the latest run" : "Collecting — first sample runs tonight"}
+                  body="Each engine appears here as soon as it returns an answer for one of your tracked prompts. Platforms that have never answered are not listed rather than shown at zero."
+                />
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "16px" }}>
+                  {m.platforms.map((p) => (
+                    <div className="row-hover" key={p.provider}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12.5px", marginBottom: "6px" }}>
+                        <span>{p.label}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                          {`${pct(p.visibility)} `}
+                          <span style={{ color: "var(--fnt)", fontWeight: 500, fontSize: "11.5px" }}>
+                            {`${int(p.appearances)}/${int(p.answers)}`}
+                          </span>
+                        </span>
+                      </div>
+                      <div style={{ height: "4px", background: "var(--bg2)", borderRadius: "2px" }}>
+                        <div style={{ width: `${Math.round(p.visibility)}%`, height: "4px", background: "var(--ac)", borderRadius: "2px" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--fnt)", lineHeight: 1.55, marginTop: "14px" }}>
+                  {`${int(answersInLatestRun)} answer${s(answersInLatestRun)} from ${int(m.platforms.length)} platform${s(m.platforms.length)} in the latest run of each tracked prompt. Per-platform trends need per-platform daily history, which the store does not keep.`}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── the topic breakdowns: no live source, stated plainly ── */}
+          <div style={{ ...CARD, padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Topic breakdowns aren't collecting data yet"}</div>
+              <Hint text="What this screen would need to report per subject" />
+            </div>
+            <div style={{ fontSize: "13px", color: "var(--mut)", lineHeight: 1.7, marginTop: "10px", maxWidth: "820px" }}>
+              This needs per-prompt topic tagging in the sampler, which it doesn&apos;t do yet — prompts are stored
+              without a subject, so sampled answers cannot be grouped into topics. No estimated figures are shown.
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--fnt)", lineHeight: 1.65, marginTop: "12px", maxWidth: "820px" }}>
+              {`Three panels used to sit here: "Visibility by topic × platform", the Topics table and "Topic movers". Each one needed a topic per prompt to compute, so they are gone rather than estimated. The figures above are topic-agnostic: they cover all ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)} together.`}
+            </div>
+            <div style={{ display: "flex", gap: "9px", marginTop: "16px", flexWrap: "wrap" }}>
+              <Link
+                href="/app/prompts"
+                style={{
+                  padding: "8px 14px",
+                  background: "var(--bg0)",
+                  border: "1px solid var(--brd)",
+                  borderRadius: "7px",
+                  color: "var(--tx)",
+                  fontSize: "12.5px",
+                  fontWeight: 500,
+                }}
+              >
+                {"See tracked prompts →"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

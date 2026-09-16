@@ -14,8 +14,10 @@ type Msg = { from: "user" | "bot"; text: string; mono?: boolean };
 
 const ROBOTS_TXT = "User-agent: Googlebot\nAllow: /\n\nUser-agent: *\nDisallow: /docs";
 
+/* No support desk is wired up on this deployment, so the reply says so rather
+   than promising a follow-up that will never arrive. */
 const CANNED_REPLY =
-  "Thanks — logged for the Nike workspace. A strategist will follow up within one business day.";
+  "Thanks — noted. Support routing isn't connected on this deployment yet, so nothing was sent.";
 
 export default function SupportChat() {
   const [open, setOpen] = useState(false);

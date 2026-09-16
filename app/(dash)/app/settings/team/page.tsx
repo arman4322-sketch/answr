@@ -1,16 +1,30 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
-import { ToastButton, SelectField } from "../DemoControls";
+import { db } from "@/lib/db";
+import type { User } from "@/lib/db/entities";
+import { AUTH_COOKIE, sessionUser } from "@/lib/auth";
+import { getWorkspace } from "@/lib/workspace";
+import { ToastButton } from "../DemoControls";
 import SettingsRail from "../SettingsRail";
+import { EmptyState, brandLabel, fmtDayUTC, slugify } from "../states";
 
-/* Settings — Team. Rail item existed in the canvas with no page; built here. */
+/* Settings — Team.
+
+   The roster is the accounts that actually exist for this workspace (lib/auth →
+   the `users` collection), not the four invented colleagues this screen used to
+   list. Seats, invitations and per-member roles have no store, so each of those
+   is an honest empty state or a plain statement that roles are not enforced
+   yet. */
 
 export const metadata: Metadata = {
   title: "Team — Settings",
 };
 
-const NOTE = "Team changes apply on live workspaces.";
+export const dynamic = "force-dynamic";
+
+const NOT_WIRED = "Team management isn't wired up yet — invites and roles are not stored.";
 
 const card: React.CSSProperties = {
   background: "var(--bg1)",
@@ -19,15 +33,6 @@ const card: React.CSSProperties = {
   padding: "16px 18px",
 };
 
-const MEMBERS = [
-  { name: "Dana Okafor", email: "dana@nike.com", role: "Owner", initials: "DO", last: "Active now" },
-  { name: "Priya Raman", email: "priya@nike.com", role: "Admin", initials: "PR", last: "2 hours ago" },
-  { name: "Marc Lefevre", email: "marc@nike.com", role: "Editor", initials: "ML", last: "Yesterday" },
-  { name: "Sam Whitfield", email: "sam@nike.com", role: "Viewer", initials: "SW", last: "4 days ago" },
-];
-
-const PENDING = [{ email: "agency@bravocreative.com", role: "Viewer", sent: "Sent Aug 3" }];
-
 const ROLES = [
   ["Owner", "Everything, including billing and deleting the workspace"],
   ["Admin", "Everything except billing"],
@@ -35,23 +40,37 @@ const ROLES = [
   ["Viewer", "Read dashboards and download reports"],
 ];
 
-const TEAM_ROWS: string[][] = [
-  ["Name", "Email", "Role", "Last active"],
-  ...MEMBERS.map((m) => [m.name, m.email, m.role, m.last]),
-];
+const GRID = "1.8fr 1fr 90px";
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const jar = await cookies();
+  const me = await sessionUser(jar.get(AUTH_COOKIE)?.value);
+  const ws = await getWorkspace();
+  const brand = brandLabel(ws?.brand);
+  const slug = slugify(ws?.brand) || "workspace";
+
+  /* Accounts that can open this workspace. With no session (the workspace was
+     unlocked with the shared passphrase) there is no roster to read. */
+  const members: User[] = me
+    ? (await db().list<User>("users")).filter((u) => u.workspaceId === me.workspaceId).sort((a, b) => a.createdAt - b.createdAt)
+    : [];
+
+  const rows: string[][] = [["Name", "Email", "Joined"], ...members.map((u) => [u.name, u.email, fmtDayUTC(u.createdAt)])];
+  const hasRows = rows.length > 1;
+
   return (
     <>
       <Topbar
         crumb={["Settings", "Team"]}
+        brand={brand}
         showDateRange={false}
         showPlatforms={false}
-        exportLabel="Export team"
-        exportFilename="nike-team.csv"
-        exportRows={TEAM_ROWS}
+        exportLabel={hasRows ? "Export team" : null}
+        exportFilename={`${slug}-team.csv`}
+        exportRows={hasRows ? rows : undefined}
         exportModule="Team"
-        exportWindow="Team roster as of Aug 5, 2026 — a point-in-time list, not a date window"
+        exportWindow="Accounts with access to this workspace — a point-in-time list, not a date window"
+        actionNote="Nothing to export — no accounts are registered for this workspace."
       />
       <div style={{ flex: "1", display: "flex" }}>
         <SettingsRail />
@@ -64,12 +83,14 @@ export default function TeamPage() {
                   <Hint text="People who can open this workspace" />
                 </div>
                 <div style={{ fontSize: "11.5px", color: "var(--fnt)", marginTop: "3px" }}>
-                  {MEMBERS.length} of 10 seats used on the Scale plan.
+                  {members.length === 0
+                    ? "No accounts registered for this workspace."
+                    : `${members.length} account${members.length === 1 ? "" : "s"} with access.`}
                 </div>
               </div>
               <span style={{ marginLeft: "auto" }}>
                 <ToastButton
-                  note="Inviting teammates needs a live workspace — this demo is read-only."
+                  note={NOT_WIRED}
                   className="btn-ac"
                   style={{ fontSize: "12.5px", fontWeight: 500, borderRadius: "7px", padding: "6px 14px", border: "none", cursor: "pointer", fontFamily: "inherit" }}
                 >
@@ -78,76 +99,84 @@ export default function TeamPage() {
               </span>
             </div>
 
-            <div style={{ marginTop: "13px", border: "1px solid var(--brd)", borderRadius: "8px", overflow: "hidden" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1.6fr 1fr 1fr 90px",
-                  padding: "9px 14px",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  letterSpacing: ".1em",
-                  textTransform: "uppercase",
-                  color: "var(--fnt)",
-                  borderBottom: "1px solid var(--brd)",
-                }}
-              >
-                <span>Member</span>
-                <span>Role</span>
-                <span>Last active</span>
-                <span />
+            {members.length === 0 ? (
+              <div style={{ marginTop: "13px" }}>
+                <EmptyState
+                  line="No team accounts to list."
+                  note="This roster shows the accounts registered against the workspace. Sign in with an account (rather than the shared workspace passphrase) to see it."
+                />
               </div>
-              {MEMBERS.map((m, i) => (
+            ) : (
+              <div style={{ marginTop: "13px", border: "1px solid var(--brd)", borderRadius: "8px", overflow: "hidden" }}>
                 <div
-                  key={m.email}
-                  className="row-hover"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1.6fr 1fr 1fr 90px",
-                    alignItems: "center",
-                    padding: "11px 14px",
-                    fontSize: "12.5px",
-                    ...(i > 0 ? { borderTop: "1px solid var(--brd)" } : {}),
+                    gridTemplateColumns: GRID,
+                    padding: "9px 14px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    letterSpacing: ".1em",
+                    textTransform: "uppercase",
+                    color: "var(--fnt)",
+                    borderBottom: "1px solid var(--brd)",
                   }}
                 >
-                  <span style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
-                    <span
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        flex: "none",
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg,#3e4046,#26272b)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        color: "var(--mut)",
-                      }}
-                    >
-                      {m.initials}
-                    </span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block" }}>{m.name}</span>
-                      <span style={{ display: "block", fontSize: "11px", color: "var(--fnt)" }}>{m.email}</span>
-                    </span>
-                  </span>
-                  <span>
-                    <SelectField defaultValue={m.role} items={["Owner", "Admin", "Editor", "Viewer"]} note={NOTE} />
-                  </span>
-                  <span style={{ color: "var(--mut)", fontVariantNumeric: "tabular-nums" }}>{m.last}</span>
-                  <span style={{ textAlign: "right" }}>
-                    <ToastButton
-                      note={NOTE}
-                      style={{ fontSize: "11.5px", background: "none", border: "none", color: "var(--mut)", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                    >
-                      Remove
-                    </ToastButton>
-                  </span>
+                  <span>Member</span>
+                  <span>Joined</span>
+                  <span />
                 </div>
-              ))}
-            </div>
+                {members.map((u, i) => (
+                  <div
+                    key={u.id}
+                    className="row-hover"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: GRID,
+                      alignItems: "center",
+                      padding: "11px 14px",
+                      fontSize: "12.5px",
+                      ...(i > 0 ? { borderTop: "1px solid var(--brd)" } : {}),
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: "24px",
+                          height: "24px",
+                          flex: "none",
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg,#3e4046,#26272b)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "9px",
+                          fontWeight: 600,
+                          color: "var(--mut)",
+                        }}
+                      >
+                        {initials(u.name, u.email)}
+                      </span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block" }}>
+                          {u.name || u.email}
+                          {me && u.id === me.id && <span style={{ color: "var(--fnt)", fontWeight: 400 }}>{" · you"}</span>}
+                        </span>
+                        <span style={{ display: "block", fontSize: "11px", color: "var(--fnt)" }}>{u.email}</span>
+                      </span>
+                    </span>
+                    <span style={{ color: "var(--mut)", fontVariantNumeric: "tabular-nums" }}>{fmtDayUTC(u.createdAt)}</span>
+                    <span style={{ textAlign: "right" }}>
+                      <ToastButton
+                        note={NOT_WIRED}
+                        style={{ fontSize: "11.5px", background: "none", border: "none", color: "var(--mut)", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >
+                        Remove
+                      </ToastButton>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={card}>
@@ -155,31 +184,8 @@ export default function TeamPage() {
               Pending invites
               <Hint text="Invited people who have not joined yet" />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginTop: "12px" }}>
-              {PENDING.map((p) => (
-                <div
-                  key={p.email}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "9px 12px",
-                    background: "var(--bg0)",
-                    border: "1px solid var(--brd)",
-                    borderRadius: "7px",
-                    fontSize: "12.5px",
-                  }}
-                >
-                  <span>{p.email}</span>
-                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--mut)", border: "1px solid var(--brd)", borderRadius: "4px", padding: "2px 6px" }}>
-                    {p.role}
-                  </span>
-                  <span style={{ marginLeft: "auto", color: "var(--fnt)", fontSize: "11px" }}>{p.sent}</span>
-                  <ToastButton note={NOTE} style={{ fontSize: "11.5px", background: "none", border: "none", color: "var(--ac)", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                    Resend
-                  </ToastButton>
-                </div>
-              ))}
+            <div style={{ marginTop: "12px" }}>
+              <EmptyState line="No pending invites." note="Invitations are not stored yet, so none can be outstanding." />
             </div>
           </div>
 
@@ -187,6 +193,9 @@ export default function TeamPage() {
             <div style={{ fontSize: "13.5px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
               What each role can do
               <Hint text="Who is allowed to change what" />
+            </div>
+            <div style={{ fontSize: "11.5px", color: "var(--fnt)", marginTop: "3px" }}>
+              Roles are not stored or enforced yet — every account with access sees the whole workspace.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginTop: "12px", fontSize: "12.5px" }}>
               {ROLES.map(([role, desc]) => (
@@ -201,4 +210,11 @@ export default function TeamPage() {
       </div>
     </>
   );
+}
+
+function initials(name: string, email: string): string {
+  const source = name?.trim() || email.split("@")[0] || "";
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((p) => p[0]);
+  return (letters.join("") || source.slice(0, 2)).toUpperCase();
 }

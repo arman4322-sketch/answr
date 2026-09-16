@@ -1,77 +1,69 @@
 import type { ReportSpec } from "@/lib/export/report";
-import { WINDOW_30D } from "@/lib/export/reports";
 import { METRICS } from "@/lib/metrics";
 
-/* Page health → executive CSV.
+/* Page health → "not collecting" export (pattern B).
 
-   A single-URL report: the crawler-probe render timings with their web-vitals
-   band and a plain-English read, then how each platform actually treats the
-   page (citations, crawls, humans referred), then the fix. No trend chart
-   exists on this screen, so there is no dated series to carry. */
+   This file used to carry a hand-written executive report for a single URL:
+   render timings with web-vitals bands, a per-platform citations/crawls/
+   referrals table and a fix note, all under a hard-coded brand. Every figure
+   was invented — nothing in the pipeline crawls your pages. The sampler stores
+   the answers assistants give to your tracked prompts; it never fetches, renders
+   or times a URL of yours, and no per-URL join exists between the citation
+   corpus and the crawler-event log.
 
-export const pageHealthSpec: ReportSpec = {
-  module: "Agent Analytics · Page health",
-  brand: "Nike",
-  window: WINDOW_30D,
-  summary: [
-    {
-      label: "Page",
-      value: "/running/marathon-training-guide",
-      note: `${METRICS.page_health.plain}. Last indexed 2h ago by GPTBot — the site's most crawled, most cited and highest-referring page.`,
-    },
-    {
-      label: "First Contentful Paint",
-      value: "0.9s — GOOD",
-      note: "When the first thing appears on screen. Fast enough for bots and people.",
-    },
-    {
-      label: "Largest Contentful Paint",
-      value: "1.8s — GOOD",
-      note: "When the main content finishes loading. Comfortably inside the web-vitals good band.",
-    },
-    {
-      label: "Time to Interactive",
-      value: "3.4s — FAIR",
-      note: `${METRICS.page_speed.plain}. The only failing check: a 1.2 MB analytics bundle delays interactivity.`,
-    },
-    {
-      label: "Citations earned",
-      value: "173 across three platforms",
-      note: "ChatGPT 84 · Perplexity 51 · AI Overviews 38 — all three rising this window.",
-    },
-    {
-      label: "Humans referred",
-      value: "912",
-      delta: "+103 across platforms",
-      note: `${METRICS.ai_referrals.plain}. 26.7% of every AI referral the site receives lands here.`,
-    },
-  ],
-  sections: [
-    {
-      title: "Render timings",
-      note: "Measured by Answr's own crawler probes during the weekly re-crawl; bands follow web-vitals thresholds.",
-      columns: ["Metric", "Value", "Band", "Why it matters"],
-      rows: [
-        ["First Contentful Paint", "0.9s", "GOOD", "When the first thing appears on screen"],
-        ["Largest Contentful Paint", "1.8s", "GOOD", "When the main content finishes loading"],
-        ["Time to Interactive", "3.4s", "FAIR", "When the page becomes usable — slower than it should be"],
-      ],
-    },
-    {
-      title: "Platform breakdown",
-      note: "How each assistant treats this page: how often it cites it, how often it crawls it, and how many people it sends.",
-      columns: ["Platform", "Citations", "Crawls", "Humans referred", "Change vs previous"],
-      rows: [
-        ["ChatGPT", "84", "2,214", "512", "+61"],
-        ["Perplexity", "51", "1,108", "231", "+18"],
-        ["AI Overviews", "38", "846", "169", "+24"],
-      ],
-    },
-  ],
-  footnotes: [
-    "TTI fair: a 1.2 MB analytics bundle delays interactivity — irrelevant to crawlers, costly for the humans they refer. Defer it below the fold.",
-    "Source: Answr's headless crawler probes (respecting robots.txt) for timings, joined to the crawler-event log and the citation corpus for this URL.",
-    "Page health is re-crawled weekly, or on demand via Re-analyze — figures here are from the most recent crawl.",
-    "Full metric definitions: METRICS.md, or the ⓘ beside each figure in-app.",
-  ],
-};
+   The Export button stays honest rather than dead: the CSV names the missing
+   capability and carries no figures at all. The brand comes from the live
+   workspace, so a downloaded file can never be headed with a brand this
+   deployment does not track. */
+
+export function pageHealthSpec(brand: string | null): ReportSpec {
+  return {
+    module: "Agent Analytics · Page health",
+    brand: brand ?? "Not configured",
+    window: "Not collected",
+    windowNote:
+      "Page health is not being measured on this deployment, so this file covers no window and carries no figures.",
+    summary: [
+      {
+        label: METRICS.page_health.label,
+        value: "Not available yet",
+        note: "This needs a crawler that fetches and renders your own URLs. The sampler stores the answers assistants give to your tracked prompts, not crawls of your pages. No estimated figures are shown.",
+      },
+      {
+        label: METRICS.page_speed.label,
+        value: "Not available yet",
+        note: "First Contentful Paint, Largest Contentful Paint and Time to Interactive come from crawler render probes, which this deployment does not run.",
+      },
+    ],
+    sections: [
+      {
+        title: "Page health — not collecting data yet",
+        note: "Nothing is estimated below; each row states a requirement that is not met.",
+        columns: ["What this report would contain", "Why it is empty"],
+        rows: [
+          [
+            "Render timings per URL (FCP, LCP, TTI) and their web-vitals bands",
+            "No headless crawler probe fetches, renders or times your pages, so no timing exists to band.",
+          ],
+          [
+            "Readiness checks (fetchability, structured data, headings, freshness)",
+            "Nothing crawls the page markup, so no check can be run against it.",
+          ],
+          [
+            "Per-platform citations, crawls and humans referred for one URL",
+            "Citations are stored per answer and crawler events per request; neither is joined to a single page of yours, so a per-URL breakdown cannot be derived.",
+          ],
+          [
+            "Change versus a previous window for any of the above",
+            "There is no first measurement, so there is nothing to compare against.",
+          ],
+        ],
+      },
+    ],
+    footnotes: [
+      "This export exists so the screen's button is honest: there is no measured data behind page health, and none is invented here.",
+      "What this deployment does capture is AI crawler requests and AI referral visits (Agent Analytics), and the domains cited in sampled answers (Citations).",
+      "Full metric definitions: METRICS.md, or the ⓘ beside each figure in-app.",
+    ],
+  };
+}

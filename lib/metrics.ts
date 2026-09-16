@@ -5,7 +5,7 @@
    Consumed by:
    - <KpiCard metricId=…> — the ⓘ provenance tooltip on every KPI
    - tools/gen-metrics-doc.mjs — generates METRICS.md from this file
-   The demo workspace (Nike) ships fixture values; `source` and `calculation`
+   Metric values are computed live by lib/scoring from sampled answers; `source` and `calculation`
    describe the production data path each number is designed to be fed by. */
 
 export type MetricDef = {
@@ -144,7 +144,7 @@ export const METRICS = {
   cited_source_count: {
     label: "Cited source",
     plain: "How often AI quoted this one website",
-    definition: "For one external domain (e.g. runnersworld.com): how many sampled answers cited it in the window.",
+    definition: "For one external cited domain: how many sampled answers cited it in the window.",
     source: "Parsed-citation corpus grouped by registrable domain.",
     calculation: "Count of (answer, citation) pairs per domain; the source table ranks domains by this count.",
     cadence: "Per daily run; 30-day window.",

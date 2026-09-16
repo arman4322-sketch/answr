@@ -1,33 +1,41 @@
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
 import InsightsTabs from "../InsightsTabs";
-import AudiencesBoard from "./AudiencesBoard";
+import NotCollectingPanel from "../NotCollectingPanel";
+import { getLiveMetrics } from "@/lib/live/metrics";
 
 export const metadata: Metadata = { title: "Audiences · Answer Engine Insights" };
+export const dynamic = "force-dynamic";
 
-/* Topbar export — the visible segment-comparison table, header row first (playbook 1). */
-const EXPORT_ROWS: string[][] = [
-  ["Segment", "Visibility", "Share of voice", "Sentiment", "Δ 30d"],
-  ["Marathon runners", "44.6%", "36.2%", "Positive · 78", "↑ 3.1"],
-  ["Gym / cross-training", "31.8%", "26.4%", "Positive · 71", "↑ 1.2"],
-  ["Casual / lifestyle wearers", "18.2%", "15.9%", "Neutral · 55", "↓ 0.4"],
-];
+/* Answer Engine Insights — Audiences.
 
-/* Answer Engine Insights — Audiences — converted from canvas frame #p2-audiences.
-   Wired (W2): visibility trend → TrendChart with area fill; axis dates match the
-   Jul 7 – Aug 5 window.
-   Activated (F2): the three segment cards are real buttons and DRIVE the page —
-   headline + delta, trend series + y-axis, "Rank in segment" and the highlighted
-   comparison row all come from lib/data/audiences.ts. "+ New segment" opens a
-   real describe → generate-prompt-set → add flow. Everything below the tabs
-   therefore lives in the client child <AudiencesBoard>; this page stays a server
-   component so it can export metadata. */
-export default function Page() {
+   The segment cards, their trends, the "rank in segment" list, the comparison
+   table and the "+ New segment" flow were all driven by a shipped fixture.
+   Nothing in the live corpus can replace them: the sampler runs each tracked
+   prompt as written, once, with no persona variants, so there is no sampled
+   answer that belongs to one audience rather than another.
+
+   The route keeps its topbar and sub-nav and states what is missing. The
+   client board and its modal are deleted along with the fixture, and the Export
+   button is gone — there is no report spec for a feature with no data. */
+export default async function Page() {
+  const m = await getLiveMetrics();
+  const brand = m.workspace?.brand ?? "Your brand";
+
   return (
     <div className="frame-p2-audiences">
-      <Topbar crumb={["Answer Engine Insights", "Audiences"]} rangeLive platformNote="Audience visibility is scored across all platforms here — the platform filter re-slices Overview." exportFilename="nike-insights-audiences-30d.csv" exportRows={EXPORT_ROWS} />
+      <Topbar
+        crumb={["Answer Engine Insights", "Audiences"]}
+        brand={brand}
+        showDateRange={false}
+        showPlatforms={false}
+        exportLabel={null}
+      />
       <InsightsTabs />
-      <AudiencesBoard />
+      <NotCollectingPanel
+        title="Audiences isn't collecting data yet"
+        requires="This needs persona-variant prompt runs, which the sampler doesn't perform — each tracked prompt is asked once, as written, so no sampled answer can be split by audience segment."
+      />
     </div>
   );
 }

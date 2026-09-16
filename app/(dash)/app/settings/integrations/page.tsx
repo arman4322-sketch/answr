@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
 import SettingsRail from "../SettingsRail";
+import { brandLabel } from "../states";
+import { getWorkspace } from "@/lib/workspace";
 import TestButton from "./TestButton";
 import ScoringPreview from "./ScoringPreview";
 import { providerStatuses } from "@/lib/providers/registry";
@@ -15,7 +17,10 @@ import { METRICS, type MetricId } from "@/lib/metrics";
    boolean "configured" and the env-var NAMES to set. Set each variable in your
    host's environment (Vercel → Settings → Environment Variables), redeploy, and
    the lane activates: the sampler (lib/sampler) and its scoring turn these into
-   the metrics in lib/metrics.ts. See INTEGRATIONS.md and HANDOFF.md. */
+   the metrics in lib/metrics.ts. See INTEGRATIONS.md and HANDOFF.md.
+
+   The crumb brand comes from the configured workspace, like every other screen
+   in this cluster — there is no default brand anywhere in Settings. */
 
 export const metadata: Metadata = { title: "Integrations — Settings" };
 export const dynamic = "force-dynamic";
@@ -44,7 +49,8 @@ function metricLabel(id: string): string {
   return (METRICS as Record<string, { label?: string }>)[id as MetricId]?.label ?? id;
 }
 
-export default function IntegrationsPage() {
+export default async function IntegrationsPage() {
+  const ws = await getWorkspace();
   const providers = providerStatuses();
   const configuredCount = providers.filter((p) => p.configured).length;
   const durable = !!readKvEnv();
@@ -52,7 +58,7 @@ export default function IntegrationsPage() {
 
   return (
     <>
-      <Topbar crumb={["Settings", "Integrations"]} showDateRange={false} showPlatforms={false} exportLabel={null} />
+      <Topbar crumb={["Settings", "Integrations"]} brand={brandLabel(ws?.brand)} showDateRange={false} showPlatforms={false} exportLabel={null} />
       <div style={{ flex: "1", display: "flex" }}>
         <SettingsRail />
         <div style={{ flex: "1", padding: "24px 28px", display: "flex", flexDirection: "column", gap: "16px", maxWidth: "980px" }}>
@@ -60,11 +66,11 @@ export default function IntegrationsPage() {
           <div style={card}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ fontSize: "14px", fontWeight: 600 }}>Answer-engine providers</div>
-              <Hint text="The API keys that turn Answr's metrics from demo fixtures into live data" />
+              <Hint text="The API keys that let Answr sample real AI answers" />
             </div>
             <div style={{ fontSize: "12.5px", color: "var(--mut)", lineHeight: 1.6, marginTop: "6px" }}>
               {configuredCount === 0
-                ? "No providers connected yet — the dashboard runs on demo fixtures. Add a key below to light up the sampling pipeline."
+                ? "No providers connected yet — the sampler has no lane to run, so every dashboard reports zero. Add a key below to start collecting answers."
                 : `${configuredCount} of ${providers.length} providers connected. The nightly sampler runs against every connected lane.`}
             </div>
             <div style={{ fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.6, marginTop: "8px" }}>

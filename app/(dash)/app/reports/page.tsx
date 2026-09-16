@@ -1,134 +1,237 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
-import ReportBuilder from "./ReportBuilder";
-import { DownloadButton, NewReportButton, ScheduleToggle } from "./ReportsControls";
-import "./page.css";
+import ReportCsvButton from "@/components/ui/ReportCsvButton";
+import { reportCatalog } from "./catalog";
 
-/* Reports — converted from canvas frame #reports.
-   The "Request a concierge report →" link (canvas anchor to #m-wizard) opens the
-   ReportWizardModal client component. The staged reports.css only contained hover
-   rules for the embedded sidebar (now owned by the shared layout); page.css keeps
-   just the concierge-trigger hover to match global link hover.
-   Wiring pass: recent-reports and scheduled rows get the global .row-hover class.
-   No KPI stat cards (incl. no lift stats) or primary charts exist on this frame.
-   Button-activation pass:
-   - the "Build a report" card moved into <ReportBuilder> (real form state)
-   - topbar "+ New report" moved from the Topbar export slot into `extra` so it can
-     open the existing ReportWizardModal (Topbar's own export button has no click
-     target); the slot renders in the same position, so the frame is unchanged
-   - each recent report's "Download ↓" downloads a real CSV manifest built from that
-     report's own fixture (metadata + the sections it ships)
-   - scheduled rows' pills are real toggles (playbook 5). */
+/* Reports.
+
+   The fixture is gone: four "recent reports" with invented names, ranges,
+   created dates and formats; two schedules with cadences and recipient counts;
+   a builder pre-filled with a report name and two @nike.com recipients; and a
+   concierge wizard whose goal text named a competitor and promised a two-day
+   turnaround for a request that was never sent anywhere.
+
+   Nothing in this product stores a report, runs a schedule or sends mail — so
+   none of those rows could be made live, and they are not replaced with empty
+   chrome either. What the product really has is the export pipeline: every
+   wired screen builds a ReportSpec from live metrics and lib/export/report.ts
+   renders it as an executive CSV. This screen now lists exactly those reports
+   (./catalog.ts), with the window each one covers and the size of the file it
+   writes read off the built spec, and each row downloads the real thing.
+
+   Saved copies and scheduled delivery get an honest panel naming what they
+   would need, so an empty section can never read as "you have no reports yet"
+   when the truth is that reports are never kept. */
 
 export const metadata: Metadata = {
   title: "Reports — Answr",
 };
 
-/* Fixture manifests behind the recent-report downloads: each row's own depicted
-   metadata plus the sections that report ships (drawn from the builder's section
-   vocabulary on this page). */
-const RECENT = [
-  {
-    name: "Weekly AEO summary — exec team",
-    range: "Jul 27 – Aug 2",
-    created: "Aug 3",
-    format: "PDF",
-    filename: "nike-report-weekly-aeo-summary-jul27-aug2.csv",
-    sections: ["Executive summary", "Visibility & share-of-voice trends", "Competitor benchmark", "New citations"],
-  },
-  {
-    name: "Citations deep-dive — content team",
-    range: "Jul 1 – Jul 31",
-    created: "Aug 1",
-    format: "CSV",
-    filename: "nike-report-citations-deep-dive-jul.csv",
-    sections: ["Executive summary", "New citations", "Prompt-level detail"],
-  },
-  {
-    name: "Weekly AEO summary — exec team",
-    range: "Jul 20 – Jul 26",
-    created: "Jul 27",
-    format: "PDF",
-    filename: "nike-report-weekly-aeo-summary-jul20-jul26.csv",
-    sections: ["Executive summary", "Visibility & share-of-voice trends", "Competitor benchmark", "New citations"],
-  },
-  {
-    name: "Board pack — AI visibility appendix",
-    range: "Q2 2026",
-    created: "Jul 8",
-    format: "PDF",
-    filename: "nike-report-board-pack-q2-2026.csv",
-    sections: ["Executive summary", "Visibility & share-of-voice trends", "Competitor benchmark", "Agent traffic"],
-  },
-];
+export const dynamic = "force-dynamic";
 
-function manifest(r: (typeof RECENT)[number]): string[][] {
-  return [
-    ["Report", "Range", "Created", "Format", "Section"],
-    ...r.sections.map((s) => [r.name, r.range, r.created, r.format, s]),
-  ];
+const GRID = "1.7fr 1.1fr .5fr .5fr .8fr";
+
+const panel: React.CSSProperties = {
+  background: "var(--bg1)",
+  border: "1px solid var(--brd)",
+  borderRadius: "10px",
+  overflow: "hidden",
+};
+const cardTitle: React.CSSProperties = {
+  padding: "16px 20px 12px",
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  fontSize: "14.5px",
+  fontWeight: 600,
+};
+const head: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: GRID,
+  padding: "8px 20px",
+  fontSize: "10px",
+  fontWeight: 500,
+  fontVariantNumeric: "tabular-nums",
+  letterSpacing: ".12em",
+  textTransform: "uppercase",
+  color: "var(--fnt)",
+  borderBottom: "1px solid var(--brd)",
+};
+const cell: React.CSSProperties = {
+  fontSize: "12px",
+  fontWeight: 400,
+  fontVariantNumeric: "tabular-nums",
+  color: "var(--mut)",
+};
+const body: React.CSSProperties = {
+  fontSize: "12.5px",
+  color: "var(--mut)",
+  lineHeight: 1.6,
+  marginTop: "6px",
+  maxWidth: "72ch",
+};
+const label: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 600,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+  color: "var(--fnt)",
+};
+const link: React.CSSProperties = {
+  fontSize: "12.5px",
+  fontWeight: 500,
+  color: "var(--ac)",
+  textDecoration: "none",
+};
+const downloadStyle: React.CSSProperties = {
+  textAlign: "right",
+  color: "var(--ac)",
+  fontSize: "12px",
+  fontWeight: 500,
+  fontVariantNumeric: "tabular-nums",
+  background: "none",
+  border: "none",
+  padding: 0,
+  fontFamily: "inherit",
+  cursor: "pointer",
+};
+
+function historyLabel(days: number): string {
+  if (days <= 0) return "no history yet";
+  return `${days} day${days === 1 ? "" : "s"} of history`;
 }
 
-export default function ReportsPage() {
+function utc(ts: number | null): string {
+  if (!ts) return "no run yet";
+  return `${new Date(ts).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+export default async function ReportsPage() {
+  const { metrics: m, reports } = await reportCatalog();
+  const brand = m.workspace?.brand ?? "Your brand";
+
+  const facts: [string, string][] = m.configured
+    ? [
+        ["Workspace", m.workspace?.brand ?? ""],
+        ["Tracked prompts", `${m.promptsTracked}`],
+        ["Answers sampled", `${m.answersSampled}`],
+        ["Sampled history", historyLabel(m.days)],
+        ["Last run", utc(m.lastRunAt)],
+      ]
+    : [];
+
   return (
     <div className="frame-reports">
       <Topbar
         crumb="Reports"
+        brand={brand}
+        showDateRange={false}
+        showPlatforms={false}
         exportLabel={null}
-        extra={<NewReportButton />}
-        rangeNote="The reports list isn't windowed — each report carries its own window and schedule. The date range re-slices Overview, Insights, Citations and Agent Analytics."
-        platformNote="The reports list isn't split by platform — each report names its own platforms. The platform filter re-slices Overview."
       />
-      <div style={{padding:"24px",display:"grid",gridTemplateColumns:"420px 1fr",gap:"16px",alignItems:"start"}}>
-        <ReportBuilder />
-        <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
-          <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",overflow:"hidden"}}>
-            <div style={{padding:"16px 20px 12px",display:"flex",alignItems:"center",gap:"6px",fontSize:"14.5px",fontWeight:"600"}}>{"Recent reports"}<Hint text="Summaries already made for your team" /></div>
-            <div style={{display:"grid",gridTemplateColumns:"1.8fr 1fr .7fr .6fr .8fr",padding:"8px 20px",fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".12em",textTransform:"uppercase",color:"var(--fnt)",borderBottom:"1px solid var(--brd)"}}>
+      <div style={{ padding: "24px", display: "grid", gridTemplateColumns: "420px 1fr", gap: "16px", alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {m.configured ? (
+            <div style={{ ...panel, padding: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14.5px", fontWeight: 600 }}>
+                {"What a report contains"}
+                <Hint text="What lands in the file when you download one" />
+              </div>
+              <div style={body}>
+                Every report on the right downloads as one executive CSV: a header block naming this workspace and the
+                window the rows really cover, an executive summary of the headline metrics with a plain-English read on
+                each, the supporting tables, then footnotes naming the source of every figure.
+              </div>
+              <div style={{ ...label, marginTop: "18px" }}>{"Built from"}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "10px" }}>
+                {facts.map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "12.5px" }}>
+                    <span style={{ color: "var(--fnt)" }}>{k}</span>
+                    <span style={{ fontWeight: 500, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.6, marginTop: "16px" }}>
+                {m.hasData
+                  ? "Reports carry only the days the sampler actually ran, so there is no change-vs-previous column until there is a previous window to compare against."
+                  : "No answers have been sampled yet. The reports still download, and each one says plainly that it has no figures rather than filling in estimates."}
+              </div>
+            </div>
+          ) : (
+            <div style={{ ...panel, padding: "20px" }}>
+              <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Set up your brand to start collecting data"}</div>
+              <div style={body}>
+                Reports are rendered from the answers sampled for your tracked prompts. No workspace exists yet — no
+                brand, domain or prompt set is configured — so the files below would carry no figures. Nothing is
+                estimated to fill them.
+              </div>
+              <Link href="/onboarding/brand" style={{ ...link, marginTop: "12px", display: "inline-block" }}>
+                Set up your brand →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div style={panel}>
+            <div style={cardTitle}>
+              {"Reports you can export"}
+              <Hint text="Downloads built from your live data, right now" />
+            </div>
+            <div style={head}>
               <span>{"Report"}</span>
-              <span>{"Range"}</span>
-              <span>{"Created"}</span>
-              <span>{"Format"}</span>
+              <span>{"Covers"}</span>
+              <span>{"Sections"}</span>
+              <span>{"Rows"}</span>
               <span />
             </div>
-            {RECENT.map((r, i) => (
+            {reports.map((r, i) => (
               <div
-                key={r.filename}
+                key={r.id}
                 className="row-hover"
-                style={
-                  i === 0
-                    ? {display:"grid",gridTemplateColumns:"1.8fr 1fr .7fr .6fr .8fr",alignItems:"center",padding:"12px 20px",fontSize:"13px"}
-                    : {display:"grid",gridTemplateColumns:"1.8fr 1fr .7fr .6fr .8fr",alignItems:"center",padding:"12px 20px",fontSize:"13px",borderTop:"1px solid var(--brd)"}
-                }
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: GRID,
+                  alignItems: "center",
+                  padding: "12px 20px",
+                  fontSize: "13px",
+                  ...(i === 0 ? {} : { borderTop: "1px solid var(--brd)" }),
+                }}
               >
-                <span style={{fontWeight:"500"}}>{r.name}</span>
-                <span style={{fontSize:"12px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{r.range}</span>
-                <span style={{fontSize:"12px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{r.created}</span>
-                <span style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{r.format}</span>
-                <DownloadButton name={`${r.name} (${r.range})`} filename={r.filename} format={r.format} rows={manifest(r)} />
+                <span>
+                  <Link href={r.href} style={{ fontWeight: 500, color: "var(--tx)", textDecoration: "none" }}>
+                    {r.name}
+                  </Link>
+                  <span style={{ display: "block", fontSize: "11px", color: "var(--fnt)", lineHeight: 1.5, marginTop: "3px", paddingRight: "12px" }}>
+                    {r.detail}
+                  </span>
+                </span>
+                <span style={{ ...cell, paddingRight: "12px" }}>{r.spec.window}</span>
+                <span style={cell}>{r.sectionCount}</span>
+                <span style={cell}>{r.rowCount}</span>
+                <ReportCsvButton filename={r.filename} report={r.spec} style={downloadStyle}>
+                  {"Download ↓"}
+                </ReportCsvButton>
               </div>
             ))}
           </div>
-          <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",overflow:"hidden"}}>
-            <div style={{padding:"16px 20px 12px",display:"flex",alignItems:"center",gap:"6px",fontSize:"14.5px",fontWeight:"600"}}>{"Scheduled"}<Hint text="Reports that send themselves on repeat" /></div>
-            <div className="row-hover" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 20px",borderTop:"1px solid var(--brd)",fontSize:"13px"}}>
-              <div>
-                <div style={{fontWeight:"500"}}>{"Weekly AEO summary — exec team"}</div>
-                <div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"3px"}}>{"Weekly · Mondays 9:00 · 2 recipients"}</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
-                <ScheduleToggle label="Weekly AEO summary — exec team" defaultOn />
-              </div>
+
+          <div style={{ ...panel, padding: "22px 24px" }}>
+            <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Saved and scheduled reports aren't stored yet"}</div>
+            <div style={body}>
+              This needs somewhere to keep a generated file and a delivery job that can mail it on a cadence — neither
+              exists in this deployment, so nothing has ever been saved or sent. No estimated figures are shown.
             </div>
-            <div className="row-hover" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 20px",borderTop:"1px solid var(--brd)",fontSize:"13px"}}>
-              <div>
-                <div style={{fontWeight:"500"}}>{"Monthly competitor benchmark"}</div>
-                <div style={{fontSize:"11px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",marginTop:"3px"}}>{"Monthly · 1st · 5 recipients"}</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
-                <ScheduleToggle label="Monthly competitor benchmark" defaultOn={false} />
-              </div>
+            <div style={{ ...label, marginTop: "18px" }}>{"What this section would require"}</div>
+            <div style={{ ...body, marginTop: "6px" }}>
+              A report store that keeps each generated file with the window it covered, plus a scheduler and a mail
+              sender with a recipient list per report.
+            </div>
+            <div style={{ ...body, marginTop: "6px" }}>
+              Until those exist, a report is produced the moment you download it, from the data as it stands — nothing
+              is kept, queued or delivered, and no past run, schedule or recipient is listed here.
             </div>
           </div>
         </div>

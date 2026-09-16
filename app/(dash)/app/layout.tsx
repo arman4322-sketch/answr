@@ -2,13 +2,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/app/Sidebar";
 import { getLiveMetrics } from "@/lib/live/metrics";
-import SampleDataBanner from "@/components/app/SampleDataBanner";
 import Overlays from "@/components/app/Overlays";
 import SmallScreenGate from "@/components/app/SmallScreenGate";
 import Toaster from "@/components/ui/Toaster";
 import { FilterProvider } from "@/lib/filters/context";
 import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
 import { AUTH_COOKIE, sessionUser } from "@/lib/auth";
+import { brandIdentity } from "@/lib/brands";
 
 /* FilterProvider holds the topbar's date-range + platform selection. It lives
    in the layout (not a page) so the window survives navigation between
@@ -27,10 +27,8 @@ export default async function DashLayout({ children }: { children: React.ReactNo
      (lib/auth). An invalid or expired session is bounced to /login. */
   const jar = await cookies();
   const demoOk = isUnlocked(jar.get(GATE_COOKIE)?.value);
-  if (!demoOk) {
-    const user = await sessionUser(jar.get(AUTH_COOKIE)?.value);
-    if (!user) redirect("/login");
-  }
+  const user = await sessionUser(jar.get(AUTH_COOKIE)?.value);
+  if (!demoOk && !user) redirect("/login");
 
   /* Real nav counts from the live layer — never fixture numbers. */
   const live = await getLiveMetrics().catch(() => null);
@@ -38,12 +36,19 @@ export default async function DashLayout({ children }: { children: React.ReactNo
     ? { citations: live.citationsCount, prompts: live.promptsTracked }
     : undefined;
 
+  /* The sidebar's workspace row and account menu show the REAL brand and the
+     REAL signed-in account. `brand` is null when nothing is configured yet, and
+     the rail then offers onboarding instead of naming a brand that isn't there.
+     Access via the demo passphrase has no account, so `account` stays undefined
+     and the menu says so rather than inventing a person. */
+  const brand = brandIdentity(live?.workspace ?? null);
+  const account = user ? { name: user.name, email: user.email } : undefined;
+
   return (
     <FilterProvider>
       <div style={{ display: "flex", background: "var(--bg0)", minHeight: "100vh" }}>
-        <Sidebar counts={counts} />
+        <Sidebar counts={counts} brand={brand} user={account} />
         <main id="main" className="dash-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <SampleDataBanner />
           {children}
         </main>
         <SmallScreenGate />

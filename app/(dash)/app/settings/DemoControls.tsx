@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 
 /* Cluster-local client controls (infra + settings cluster).
+
+   The toasts these fire say plainly what a control does NOT do — no settings
+   surface pretends to save something the deployment has no store for.
+
    INTERACTIVITY_CONVENTIONS playbook:
-   - ToastButton  → playbook 3/4 (honest-demo toast, exact depicted styling kept)
+   - ToastButton  → playbook 3/4 (honest toast, exact depicted styling kept)
    - Toggle       → playbook 5 (real visual flip + honest toast, nothing else changes)
    - CsvButton    → playbook 1 (real CSV download for non-accent-styled export buttons)
    - SelectField  → playbook 2 for select-styled dropdowns FilterPill would restyle */
@@ -93,7 +97,7 @@ export function CsvButton({
   style,
   children,
 }: {
-  /** e.g. "nike-agents-30d.csv" */
+  /** e.g. `${slug}-agents-30d.csv` — always derived from the live brand */
   filename: string;
   /** header row first */
   rows: string[][];

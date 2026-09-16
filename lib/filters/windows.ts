@@ -1,36 +1,31 @@
-/* Live topbar filters — window model + honest multi-window data derivation.
+/* Topbar filters — the window model, plus number/axis formatting.
    ============================================================================
 
-   The demo used to ship a single 30-day fixture, so the date-range and platform
-   pills could only toast an apology. They now really re-slice the data, and the
-   rule that makes that honest is:
+   WHAT IS SAFE TO USE
+   The window model (RANGES / PLATFORMS and their lookups), the formatters
+   (`fmtInt`, `fmtDelta`, `deltaTone`, `isFlat`) and the axis helpers
+   (`windowAxis`, `axisTicks`, `windowDayLabels`, `windowWeekLabels`) hold no
+   data: they describe the selected window and format whatever the caller
+   already measured. Date labels are generated from the real clock, and YTD is
+   the days actually elapsed this year.
 
-       THE LAST 30 POINTS OF EVERY EXTENDED HISTORY ARE THE SHIPPED FIXTURE,
-       BYTE FOR BYTE.
+   WHAT IS NOT — AND IS BEING REMOVED
+   `extendLevel` / `extendCount` and everything built on them
+   (`levelSeriesForRange`, `levelStatForRange`, `seriesWindow`,
+   `countSeriesForRange`, `weeklySeriesForRange`, `accrued`, `accruedStat`)
+   SYNTHESIZE history. They were written for the fixture demo, where a screen
+   shipped one 30-day array and the 90-day / YTD pills had to invent the days
+   before it from that array's own slope and volatility. A synthesized point is
+   not a measurement — it is a plausible-looking guess — so nothing on live data
+   may call them.
 
-   Today's numbers therefore never move: "Last 30 days" renders exactly what it
-   always rendered, and every headline stays the endpoint of the chart under it.
-   Longer windows prepend a deterministic back-history that is *derived from the
-   fixture itself* — its own slope, its own volatility, its own weekday shape —
-   damped so a year of back-history stays plausible rather than running off the
-   scale. Nothing is random per render: a seeded PRNG makes the same series come
-   out identical on the server and in the browser, run after run.
-
-   Two aggregation kinds, because the metrics are two kinds:
-   - LEVEL  (visibility %, share of voice, sentiment, avg. position): the KPI is
-     the window's endpoint and the delta is endpoint − start-of-window.
-   - COUNT  (citations, crawler requests, clicks): the KPI is the window's sum
-     and the delta is that sum minus the previous window's sum. Where the frame
-     published a delta ("↑ 212", "↑ 18%"), the previous 30-day block is scaled
-     to hit that number exactly, so 30d reproduces the shipped card.
-
-   A third shape — DISTINCT counts (unique domains, unique agents, pages
-   crawled) — cannot be summed from daily counts (a domain seen twice is still
-   one domain), so it uses an explicit saturating accrual curve instead: see
-   `accrued()`. */
+   They survive only because the Insights screens have not been converted to
+   lib/live/metrics yet; delete this section together with the last import of
+   it. The live layer keeps a real per-day series (`LiveMetrics.series`) that
+   spans exactly the days the sampler has collected, and screens should slice
+   that and say how many days it covers rather than extend anything. */
 
 import type { TrendSeries } from "@/components/app/charts/TrendChart";
-import { lastDays, lastWeeks } from "@/lib/data/dates";
 
 /* ───────────────────────────── window model ───────────────────────────── */
 
@@ -48,12 +43,21 @@ export type RangeMeta = {
   weeks: number;
 };
 
-/* YTD = Jan 1 → Aug 5, 2026, the demo workspace's "today" = 217 days. */
+/** Days elapsed in the current calendar year, inclusive of today — computed from
+    the real clock, never from a fixed "today". */
+function ytdDays(now = new Date()): number {
+  const start = Date.UTC(now.getUTCFullYear(), 0, 1);
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.floor((today - start) / 86_400_000) + 1;
+}
+
+const YTD_DAYS = ytdDays();
+
 export const RANGES: RangeMeta[] = [
   { id: "7d", label: "Last 7 days · vs prev", short: "7d", days: 7, weeks: 2 },
   { id: "30d", label: "Last 30 days · vs prev", short: "30d", days: 30, weeks: 5 },
   { id: "90d", label: "Last 90 days · vs prev", short: "90d", days: 90, weeks: 13 },
-  { id: "ytd", label: "Year to date · vs prev", short: "YTD", days: 217, weeks: 31 },
+  { id: "ytd", label: "Year to date · vs prev", short: "YTD", days: YTD_DAYS, weeks: Math.ceil(YTD_DAYS / 7) },
 ];
 
 export const DEFAULT_RANGE: RangeId = "30d";
@@ -100,6 +104,15 @@ export function platformFromLabel(label: string): PlatformId | null {
 /** Longest window (YTD) plus an equal prior window, so count deltas resolve. */
 export const HISTORY_DAYS = RANGES[3].days * 2;
 export const HISTORY_WEEKS = RANGES[3].weeks * 2;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SYNTHESIZED HISTORY — FIXTURE-ERA, PENDING DELETION.
+   `extendLevel`, `extendCount`, `levelSeriesForRange`, `levelStatForRange`,
+   `seriesWindow`, `countSeriesForRange`, `weeklySeriesForRange`, `accrued` and
+   `accruedStat` fabricate the days before a shipped array. They must never be
+   called with live data; the comments inside them describe the fixture contract
+   they were written for, not a measurement.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ─────────────────────────── deterministic noise ─────────────────────────── */
 
@@ -422,14 +435,32 @@ export function windowAxis(
   return { domain: [lo, hi], labels };
 }
 
-/** Daily date labels for the active window, ending on the workspace's Aug 5. */
-export function windowDayLabels(range: RangeId): string[] {
-  return lastDays(rangeMeta(range).days);
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/* Labels are built in UTC on purpose. They render on the server and again in
+   the browser, so a local-time reading would disagree between the two for most
+   of the day outside UTC and trip a hydration mismatch. UTC also matches how
+   lib/live/metrics keys its daily series, so an axis label and a series point
+   always name the same day. */
+const fmtDay = (d: Date) => `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+
+const DAY_MS = 86_400_000;
+
+function backFrom(now: Date, count: number, stepDays: number): string[] {
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const out: string[] = [];
+  for (let i = count - 1; i >= 0; i--) out.push(fmtDay(new Date(end - i * stepDays * DAY_MS)));
+  return out;
 }
 
-/** Weekly date labels for the active window (weekly series: clicks). */
-export function windowWeekLabels(range: RangeId): string[] {
-  return lastWeeks(rangeMeta(range).weeks);
+/** Daily date labels for the active window, ending on today (UTC). */
+export function windowDayLabels(range: RangeId, now = new Date()): string[] {
+  return backFrom(now, rangeMeta(range).days, 1);
+}
+
+/** Weekly date labels for the active window, ending on the current week. */
+export function windowWeekLabels(range: RangeId, now = new Date()): string[] {
+  return backFrom(now, rangeMeta(range).weeks, 7);
 }
 
 /**
