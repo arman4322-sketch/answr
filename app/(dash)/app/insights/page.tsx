@@ -2,8 +2,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
+import LockedPreview from "@/components/app/LockedPreview";
+import { capabilitySource } from "@/lib/preview/sources";
 import { getLiveMetrics } from "@/lib/live/metrics";
+import { getEnrichedMetrics } from "@/lib/live/enriched";
+import TopicsLive from "./TopicsLive";
 import InsightsTabs from "./InsightsTabs";
+import TopicsPreview from "./TopicsPreview";
 import AeiTrend from "./AeiTrend";
 import { topicsSpec } from "./reports";
 import { historyNote, int, pct, s, stampUTC } from "./aei-format";
@@ -23,11 +28,14 @@ export const dynamic = "force-dynamic";
    - the brand comparison, from the tracked brand set's measured mentions,
    - per-platform visibility, from the engines that actually answered.
 
-   What is NOT measured, and is therefore not rendered: anything per topic. The
-   sampler stores prompts without a subject tag, so "Visibility by topic ×
-   platform", the Topics table and "Topic movers" had no live source at all.
-   They are replaced by one panel that says exactly what would have to exist —
-   no estimated heatmap, no invented per-topic deltas.
+   The topic section is the one part with no guaranteed live source: it renders
+   measured topics (<TopicsLive>, from getEnrichedMetrics) when the workspace has
+   them, and otherwise falls back to <LockedPreview>. In that fallback the layout
+   underneath is an ILLUSTRATIVE preview — dimmed to 28%, greyscaled, inert and
+   aria-hidden, under a permanent "not measured data" badge — while the overlay
+   states where the data would come from (lib/preview/sources.ts → "topics").
+   Its placeholder figures are neutral, name no brand, and exist nowhere outside
+   that wrapper. Everything above the topic section is live either way.
 
    Honest scope: the topbar's date-range and platform pills are not rendered.
    They re-slice a 30-day fixture window that no longer backs this screen; the
@@ -62,7 +70,8 @@ function CardNote({ title, body }: { title: string; body: string }) {
 }
 
 export default async function Page() {
-  const m = await getLiveMetrics();
+  const [m, e] = await Promise.all([getLiveMetrics(), getEnrichedMetrics()]);
+  const topicsSource = capabilitySource("topics");
   const brand = m.workspace?.brand ?? "Your brand";
   const slug = (m.workspace?.brand ?? "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -344,35 +353,23 @@ export default async function Page() {
             )}
           </div>
 
-          {/* ── the topic breakdowns: no live source, stated plainly ── */}
-          <div style={{ ...CARD, padding: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div style={{ fontSize: "14.5px", fontWeight: 600 }}>{"Topic breakdowns aren't collecting data yet"}</div>
-              <Hint text="What this screen would need to report per subject" />
-            </div>
-            <div style={{ fontSize: "13px", color: "var(--mut)", lineHeight: 1.7, marginTop: "10px", maxWidth: "820px" }}>
-              This needs per-prompt topic tagging in the sampler, which it doesn&apos;t do yet — prompts are stored
-              without a subject, so sampled answers cannot be grouped into topics. No estimated figures are shown.
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--fnt)", lineHeight: 1.65, marginTop: "12px", maxWidth: "820px" }}>
-              {`Three panels used to sit here: "Visibility by topic × platform", the Topics table and "Topic movers". Each one needed a topic per prompt to compute, so they are gone rather than estimated. The figures above are topic-agnostic: they cover all ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)} together.`}
-            </div>
-            <div style={{ display: "flex", gap: "9px", marginTop: "16px", flexWrap: "wrap" }}>
-              <Link
-                href="/app/prompts"
-                style={{
-                  padding: "8px 14px",
-                  background: "var(--bg0)",
-                  border: "1px solid var(--brd)",
-                  borderRadius: "7px",
-                  color: "var(--tx)",
-                  fontSize: "12.5px",
-                  fontWeight: 500,
-                }}
-              >
-                {"See tracked prompts →"}
-              </Link>
-            </div>
+          {/* ── the topic breakdowns: no live source, so the section becomes a
+                 dimmed illustrative preview under LockedPreview's overlay ── */}
+          {e.hasTopics ? (
+            <TopicsLive topics={e.topics} brand={brand} />
+          ) : (
+            topicsSource && (
+              <LockedPreview source={topicsSource}>
+                <TopicsPreview platforms={m.platforms.map((p) => p.label)} />
+              </LockedPreview>
+            )
+          )}
+
+          <div style={{ fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.65, maxWidth: "820px" }}>
+            {`The figures above the topic breakdown are topic-agnostic: they cover all ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)} together. `}
+            <Link href="/app/prompts" style={{ color: "var(--ac)", fontWeight: 500 }}>
+              {"See tracked prompts →"}
+            </Link>
           </div>
         </div>
       )}

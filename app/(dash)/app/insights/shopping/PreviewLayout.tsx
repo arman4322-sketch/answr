@@ -250,7 +250,7 @@ export default function ShoppingPreview({ brand }: { brand: string }) {
           <span style={{ fontSize: "11px", color: "var(--fnt)" }}>the buying questions this category is asked</span>
         </div>
 
-        {INTENT_PROMPTS.map((r, i) => (
+        {INTENT_PROMPTS.map((r) => (
           <div
             key={r.prompt}
             style={{
@@ -259,7 +259,7 @@ export default function ShoppingPreview({ brand }: { brand: string }) {
               gap: "12px",
               padding: "11px 19px",
               fontSize: "13px",
-              borderTop: i === 0 ? "1px solid var(--brd)" : "1px solid var(--brd)",
+              borderTop: "1px solid var(--brd)",
             }}
           >
             <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

@@ -31,11 +31,11 @@ const ROWS: {
   cells: number[];
   leader: string;
 }[] = [
-  { topic: "Product comparisons", prompts: 40, visibility: 60, cells: [70, 65, 55, 50, 45], leader: "Brand A" },
-  { topic: "Alternatives & switching", prompts: 30, visibility: 55, cells: [60, 55, 50, 45, 40], leader: "Competitor A" },
-  { topic: "Pricing & value", prompts: 25, visibility: 45, cells: [50, 45, 40, 40, 35], leader: "Brand A" },
-  { topic: "Getting started", prompts: 20, visibility: 40, cells: [45, 40, 35, 30, 30], leader: "Competitor B" },
-  { topic: "Reviews & reputation", prompts: 15, visibility: 30, cells: [35, 30, 30, 25, 20], leader: "Competitor A" },
+  { topic: "Product comparisons", prompts: 40, visibility: 55, cells: [70, 65, 55, 50, 45], leader: "Brand A" },
+  { topic: "Alternatives & switching", prompts: 30, visibility: 50, cells: [45, 60, 55, 50, 40], leader: "Competitor A" },
+  { topic: "Pricing & value", prompts: 25, visibility: 40, cells: [40, 45, 50, 40, 35], leader: "Brand A" },
+  { topic: "Getting started", prompts: 20, visibility: 35, cells: [30, 35, 40, 45, 30], leader: "Competitor B" },
+  { topic: "Reviews & reputation", prompts: 15, visibility: 30, cells: [30, 25, 25, 30, 35], leader: "Competitor A" },
   { topic: "Integrations & setup", prompts: 10, visibility: 20, cells: [25, 20, 20, 15, 15], leader: "Brand A" },
 ];
 
