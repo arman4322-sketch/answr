@@ -3,6 +3,7 @@ import { getWorkspace, saveWorkspace, identityOf } from "@/lib/workspace";
 import { resolveIdentity, identitySummary } from "@/lib/brand/identity";
 import { observedConflicts, runEntityVerification, brandMatcher, clearEntityVerdicts } from "@/lib/live/entity";
 import { answerStore } from "@/lib/sampler/store";
+import { namesBrand, firstBrandIndex } from "@/lib/brand/match";
 import { authorizedTenant, currentWorkspaceId, isWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* Re-resolve the tracked brand's identity, then re-check the answers already
@@ -83,17 +84,19 @@ export async function GET(req: Request) {
 async function auditMentions(identity: Awaited<ReturnType<typeof identityOf>>, workspaceId: string) {
   const isBrand = await brandMatcher(identity, workspaceId);
   const runs = await answerStore(workspaceId).recentRuns(500);
-  const esc = identity.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const named = new RegExp(`\\b${esc}\\b`, "i");
+  // Match on every name and alias, the same set the scorer uses. Matching
+  // identity.name alone reports "0 answers named the brand" for any workspace
+  // whose detected name is its legal name rather than the one people write.
+  const named = (text: string) => namesBrand(text, identity);
 
   const rows: {
     prompt: string; provider: string; verdict: string; verified: boolean; reason: string; excerpt: string;
   }[] = [];
   for (const run of runs) {
     for (const a of run.answers) {
-      if (a.error || !a.text || !named.test(a.text)) continue;
+      if (a.error || !a.text || !named(a.text)) continue;
       const e = isBrand.explain(run.id, a);
-      const at = a.text.search(named);
+      const at = Math.max(0, firstBrandIndex(a.text, identity));
       rows.push({
         prompt: run.prompt,
         provider: a.provider,

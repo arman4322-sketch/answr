@@ -19,6 +19,8 @@ import type { PromptRun, SampledAnswer } from "@/lib/sampler/store";
 export interface ScoreInput {
   brand: string;
   brandDomain?: string;
+  /** every host the brand owns, when it has more than one (e.g. after a move) */
+  ownedDomains?: string[];
   competitors: string[];
   /** per-provider weight; defaults to equal weighting */
   platformWeights?: Record<string, number>;
@@ -84,6 +86,12 @@ function domainOf(url: string): string | null {
 
 export function scoreRuns(runs: PromptRun[], input: ScoreInput): Scores {
   const { brand, brandDomain, competitors, platformWeights, brandMatch } = input;
+  // Owned hosts: the domain given, plus any others the brand owns. A brand that
+  // has moved is cited at both, and counting only one reported "owned 0%".
+  const owned = [...new Set([brandDomain, ...(input.ownedDomains ?? [])]
+    .map((d) => d?.trim().toLowerCase())
+    .filter((d): d is string => !!d))];
+  const isOwned = (host: string) => owned.some((o) => host === o || host.endsWith(`.${o}`));
   const isBrand = brandMatch ?? ((_runId: string, a: SampledAnswer) => mentions(a.text, brand));
 
   const weightFor = (provider: string) => platformWeights?.[provider] ?? 1;
@@ -131,9 +139,7 @@ export function scoreRuns(runs: PromptRun[], input: ScoreInput): Scores {
         const d = domainOf(cit.url);
         if (d) {
           domains.add(d);
-          if (brandDomain && (d === brandDomain.toLowerCase() || d.endsWith(`.${brandDomain.toLowerCase()}`))) {
-            ownedCitations += 1;
-          }
+          if (isOwned(d)) ownedCitations += 1;
         }
       }
     }

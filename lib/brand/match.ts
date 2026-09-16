@@ -47,6 +47,54 @@ const ABSENT: MentionResult = {
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/**
+ * Every string that counts as naming this entity: its canonical name and every
+ * alias. Exported so anything that reports on matching — the audit, the UI —
+ * asks the same question the scorer does. Using `identity.name` alone finds
+ * nothing when detection returned a legal name ("Notion Labs, Inc.") that no
+ * answer ever writes.
+ */
+export function brandCandidates(identity: BrandIdentity): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const n of [identity.name, ...identity.aliases]) {
+    const v = n?.trim();
+    if (!v || seen.has(v.toLowerCase())) continue;
+    seen.add(v.toLowerCase());
+    out.push(v);
+  }
+  return out;
+}
+
+/** Every host this brand owns, lowercased. Always includes its main domain. */
+export function ownedHosts(identity: BrandIdentity): string[] {
+  const list = [identity.domain, ...(identity.ownedDomains ?? [])]
+    .map((d) => d?.trim().toLowerCase())
+    .filter((d): d is string => !!d);
+  return [...new Set(list)];
+}
+
+/** True when `host` is this brand's own site, or a subdomain of one. */
+export function isOwnedHost(host: string, identity: BrandIdentity): boolean {
+  const h = host.trim().toLowerCase().replace(/^www\./, "");
+  return ownedHosts(identity).some((o) => h === o || h.endsWith(`.${o}`));
+}
+
+/** Index of the earliest name or alias in the text, or -1. */
+export function firstBrandIndex(text: string, identity: BrandIdentity): number {
+  let best = -1;
+  for (const c of brandCandidates(identity)) {
+    const i = firstIndex(text, c);
+    if (i >= 0 && (best < 0 || i < best)) best = i;
+  }
+  return best;
+}
+
+/** True when any name or alias appears in the text. */
+export function namesBrand(text: string, identity: BrandIdentity): boolean {
+  return firstBrandIndex(text, identity) >= 0;
+}
+
 /** First case-insensitive, word-bounded index of `name` in `text`, or -1. */
 export function firstIndex(text: string, name: string): number {
   if (!name) return -1;
@@ -68,12 +116,11 @@ function domainOf(url: string): string | null {
   }
 }
 
-function citesOwned(citations: Citation[] | undefined, domain: string): boolean {
-  if (!domain) return false;
-  const d = domain.toLowerCase();
+function citesOwned(citations: Citation[] | undefined, identity: BrandIdentity): boolean {
+  if (ownedHosts(identity).length === 0) return false;
   return (citations ?? []).some((c) => {
     const h = domainOf(c.url);
-    return !!h && (h === d || h.endsWith(`.${d}`));
+    return !!h && isOwnedHost(h, identity);
   });
 }
 
@@ -97,7 +144,7 @@ export function matchBrand(
   if (!text) return ABSENT;
 
   // 1. Locate the name, or any alias for the same entity.
-  const candidates = [identity.name, ...identity.aliases].filter(Boolean);
+  const candidates = brandCandidates(identity);
   let index = -1;
   let matched: string | null = null;
   for (const c of candidates) {
@@ -112,7 +159,7 @@ export function matchBrand(
   const base = { index, matched };
 
   // 2. Owned domain cited or written out — decisive.
-  if (citesOwned(citations, identity.domain)) {
+  if (citesOwned(citations, identity)) {
     return { ...base, verdict: "brand", include: 0, exclude: 0, reason: "answer cites the owned domain" };
   }
   if (identity.domain && text.toLowerCase().includes(identity.domain.toLowerCase())) {
@@ -151,10 +198,15 @@ export function matchBrand(
      category itself. So a positive verdict for a shared name always traces back
      to hard evidence (the owned domain, handled above) or to an explicit model
      judgement — never to a word count. */
-  if (include === 0 && exclude > 0) {
+  /* A single exclusion hit is not proof. These terms are generated, and a
+     generated list will contain ordinary words — "design", "publishing" — that
+     turn up constantly in answers about the tracked company too. Rejecting on
+     one of them threw out legitimate mentions wholesale. Only a pile-up decides
+     it here; anything thinner goes to the model, which reads the sentence. */
+  if (include === 0 && exclude >= 3) {
     return { ...base, verdict: "other-entity", include, exclude, reason: otherIs() };
   }
-  if (exclude > include * 2) {
+  if (exclude > include * 2 && exclude >= 3) {
     return { ...base, verdict: "other-entity", include, exclude, reason: otherIs() };
   }
 

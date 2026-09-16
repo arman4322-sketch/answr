@@ -2,6 +2,7 @@ import { answerStore, type PromptRun } from "@/lib/sampler/store";
 import { scoreRuns } from "@/lib/scoring";
 import { getWorkspace, identityOf } from "@/lib/workspace";
 import { brandMatcher } from "./entity";
+import { ownedHosts } from "@/lib/brand/match";
 import { trackedRegions, listAudiences } from "@/lib/segments/catalog";
 import { currentWorkspaceId } from "@/lib/tenant";
 import type { SegmentKind } from "@/lib/segments/types";
@@ -90,10 +91,12 @@ export async function getSegmentMetrics(
 
   if (definitions.length === 0) return empty(kind, true);
 
-  const isBrand = await brandMatcher(identityOf(workspace), wsId);
+  const identity = identityOf(workspace);
+  const isBrand = await brandMatcher(identity, wsId);
   const scoreOpts = {
     brand: workspace.brand,
     brandDomain: workspace.domain,
+    ownedDomains: ownedHosts(identity),
     competitors: workspace.competitors,
     brandMatch: isBrand,
   };

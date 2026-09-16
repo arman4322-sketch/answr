@@ -54,6 +54,10 @@ export async function POST(req: Request) {
    Lives in the same route module as POST so the in-memory store is shared even
    in dev (RSC pages are a separate module graph); durable once KV is set. */
 export async function GET() {
+  /* Operator-only, deliberately. These are Answr's OWN marketing leads and
+     funnel views, not tenant data, so an account session must NOT unlock them —
+     that would show one customer the operator's pipeline. Only the shared demo
+     passphrase, which is the operator, gets in. */
   const jar = await cookies();
   if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });

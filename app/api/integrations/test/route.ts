@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { authorizedTenant } from "@/lib/tenant";
 import { getProvider } from "@/lib/providers/registry";
 import type { ProviderId } from "@/lib/providers/types";
 
@@ -12,8 +11,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  // Any identified caller: an account session, or the demo passphrase.
+  if (!(await authorizedTenant())) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
 

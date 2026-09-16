@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { answerStore, type PromptRun, type SampledAnswer } from "@/lib/sampler/store";
 import { getWorkspace, identityOf } from "@/lib/workspace";
 import { pickProvider } from "@/lib/providers/registry";
-import { matchBrand, type MentionVerdict } from "@/lib/brand/match";
+import { matchBrand, isOwnedHost, type MentionVerdict } from "@/lib/brand/match";
 import { identitySummary, type BrandIdentity } from "@/lib/brand/identity";
 import { currentWorkspaceId, scopeKey } from "@/lib/tenant";
 
@@ -174,7 +174,9 @@ export async function observedConflicts(
 ): Promise<{ name: string; what: string; domain: string; citations: number }[]> {
   const token = identity.name.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (token.length < 4) return [];
-  const own = identity.domain.toLowerCase();
+  // Every host the brand owns, not just the one typed: a brand that has moved
+  // gets cited at both, and its own new address is not a name collision.
+  const ownsHost = (h: string) => isOwnedHost(h, identity);
 
   const wsId = workspaceId ?? (await currentWorkspaceId());
   const runs = await answerStore(wsId).recentRuns(limit).catch(() => [] as PromptRun[]);
@@ -184,7 +186,7 @@ export async function observedConflicts(
       for (const c of a.citations ?? []) {
         const h = hostOfUrl(c.url);
         if (!h) continue;
-        if (own && (h === own || h.endsWith(`.${own}`))) continue;
+        if (ownsHost(h)) continue;
         if (!h.replace(/[^a-z0-9]/g, "").includes(token)) continue;
         counts.set(h, (counts.get(h) ?? 0) + 1);
       }

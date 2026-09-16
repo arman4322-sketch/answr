@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizedTenant, isWritableWorkspaceId } from "@/lib/tenant";
 import { getWorkspace, saveWorkspace, defaultPromptsFor, identityOf } from "@/lib/workspace";
-import { resolveIdentity, hostOf, identitySummary, type BrandIdentity } from "@/lib/brand/identity";
+import { resolveIdentity, hostOf, hostOrNull, identitySummary, type BrandIdentity } from "@/lib/brand/identity";
 
 /* The active workspace — which brand this deployment tracks. Configured here
    (or via onboarding); every dashboard reads it. Replaces the hard-coded demo
@@ -113,13 +113,16 @@ function parseIdentity(v: unknown): BrandIdentity | undefined {
     Array.isArray(x) ? x.map((i) => cap(i, n)).filter(Boolean).slice(0, max) : [];
   const conflicts = Array.isArray(o.conflicts)
     ? (o.conflicts as Record<string, unknown>[])
-        .map((c) => ({ name: cap(c?.name, 80), what: cap(c?.what, 140), domain: hostOf(cap(c?.domain, 160)) || undefined }))
+        .map((c) => ({ name: cap(c?.name, 80), what: cap(c?.what, 140), domain: hostOrNull(cap(c?.domain, 160)) }))
         .filter((c) => c.name && c.what)
         .slice(0, 6)
     : [];
   return {
     name,
     domain: dom,
+    // Carry the owned-host list through the round trip, or the brand's own
+    // citations stop counting as owned after onboarding saves the profile.
+    ownedDomains: [...new Set([dom, ...list(o.ownedDomains, 160, 6).map((d) => hostOf(d)).filter(Boolean)])],
     aliases: list(o.aliases, 60, 6),
     description: cap(o.description, 300),
     category: cap(o.category, 80),

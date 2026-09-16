@@ -34,6 +34,16 @@ export interface BrandIdentity {
   name: string;
   /** owned domain, bare host (no scheme, no www) */
   domain: string;
+  /**
+   * Every host this company owns, including `domain`.
+   *
+   * A brand that has moved is still cited at its old address, and its new one:
+   * notion.so redirects to notion.com, and engines cite notion.com. Counting
+   * only the domain the operator typed reported "owned sources 0%" for a brand
+   * whose own site was cited eight times. Evidence-based — the redirect the
+   * site actually performed, not a guess.
+   */
+  ownedDomains?: string[];
   /** other names for the SAME entity: legal name, sub-brands, product lines */
   aliases: string[];
   /** one sentence describing the entity at that domain */
@@ -77,6 +87,18 @@ export function hostOf(input: string): string {
     .replace(/^www\./i, "")
     .replace(/[/?#].*$/, "")
     .toLowerCase();
+}
+
+/**
+ * `hostOf` for a value that may not be a domain at all.
+ *
+ * A model asked for a conflict's website will happily answer "publishing" or
+ * "music software". Those were being stored as domains and rendered as links.
+ * A host needs a dot and a plausible TLD; anything else is not a website.
+ */
+export function hostOrNull(input: string): string | undefined {
+  const h = hostOf(input);
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(h) && /\.[a-z]{2,}$/.test(h) ? h : undefined;
 }
 
 /** Bare domain → a plausible brand name, for when nothing better is available. */
@@ -185,6 +207,7 @@ export function domainIdentity(name: string, domain: string, note?: string): Bra
   return {
     name: name.trim() || nameFromHost(host),
     domain: host,
+    ownedDomains: host ? [host] : [],
     aliases: host ? [host] : [],
     description: "",
     category: "",
@@ -238,7 +261,7 @@ export async function probeConflicts(
       for (const c of parsed) {
         const n = cap(c?.name, 80);
         const what = cap(c?.what, 140);
-        const d = hostOf(cap(c?.domain, 160)) || undefined;
+        const d = hostOrNull(cap(c?.domain, 160));
         if (!n || !what) continue;
         if (d && (d === own || d.endsWith(`.${own}`))) continue;
         out.push({ name: n, what, domain: d });
@@ -349,8 +372,9 @@ export async function deriveExcludeTerms(
     `THE ONE WE TRACK: ${description || name}\n` +
     `THE OTHERS:\n${conflicts.map((c) => `- ${c.name}: ${c.what}${c.domain ? ` (${c.domain})` : ""}`).join("\n")}\n\n` +
     `List 8-12 lowercase words or short phrases that would appear in an answer about THE OTHERS ` +
-    `but almost never in an answer about the one we track. Concrete nouns from their category, ` +
-    `products and customers — not generic words like "quality" or "price".\n` +
+    `but would be ODD in an answer about the one we track. Apply this test to each: could this word ` +
+    `plausibly appear in a normal sentence about ${name}? If yes, drop it. Concrete nouns from the ` +
+    `others' field only — no generic words (quality, price, design, platform, tool, software, content).\n` +
     `Return ONLY minified JSON: ["term","term",...]`;
 
   try {
@@ -440,13 +464,16 @@ export async function resolveIdentity(input: {
     `"conflicts":[{"name":"","what":"","domain":""}]}\n\n` +
     `name         canonical brand name as the company writes it.\n` +
     `description  one sentence: what this company is and what it sells.\n` +
-    `category     3-6 words, e.g. "AI search visibility software".\n` +
+    `category     3-6 words naming the product category as a PLURAL noun phrase, so it reads correctly in "What are the best <category>?" — e.g. "AI search visibility tools", "project management apps". Never a singular phrase.\n` +
     `aliases      other names for THIS SAME entity: legal name, sub-brands, product lines, the domain. 0-6.\n` +
     `includeTerms 6-12 distinctive lowercase words or short phrases that appear when an answer is genuinely ` +
     `about this company — its category, products, use cases, buyers, notable features. Not generic filler.\n` +
     `conflicts    OTHER, UNRELATED companies, products, people or common words that share this name or a ` +
     `near-identical one, which an AI assistant might answer about by mistake. Include smaller ones. [] if none.\n` +
-    `excludeTerms 6-12 lowercase words that signal an answer is about a conflict rather than this company. ` +
+    `excludeTerms 6-12 lowercase words that signal an answer is about a CONFLICT rather than this company. ` +
+    `Each one must be implausible in an answer about this company: if a term could reasonably appear in a ` +
+    `sentence about ${entered || "this brand"}, leave it out. No generic words (design, platform, tool, ` +
+    `software, publishing, content, business). Prefer concrete nouns unique to the other thing's field. ` +
     `[] when there are no conflicts.\n\n` +
     `Base it on the evidence and on what you know about this domain. Do not invent products or conflicts.`;
 
@@ -462,14 +489,26 @@ export async function resolveIdentity(input: {
           .map((c) => ({
             name: cap(c?.name, 80),
             what: cap(c?.what, 140),
-            domain: hostOf(cap(c?.domain, 120)) || undefined,
+            domain: hostOrNull(cap(c?.domain, 120)),
           }))
           .filter((c) => c.name && c.what)
       : [];
 
-    // Observed and searched collisions outrank the model's recollection: a
-    // collision we have seen in a live answer exists whatever the model thinks.
-    const conflicts = dedupeConflicts([...evidenceConflicts, ...reported]).slice(0, 6);
+    /* The host the site actually resolved to. A brand that has migrated still
+       owns both, and answers cite whichever the engine found. */
+    const landed = site.ok ? hostOrNull(site.url) : undefined;
+    const ownedDomains = [...new Set([host, ...(landed ? [landed] : [])])];
+    const ownsHost = (h?: string) =>
+      !!h && ownedDomains.some((o) => h === o || h.endsWith(`.${o}`));
+
+    /* Observed and searched collisions outrank the model's recollection: a
+       collision we have seen in a live answer exists whatever the model thinks.
+       But a host this company OWNS is never a collision — notion.so redirects to
+       notion.com, and the search dutifully reported notion.com as "a different
+       Notion". Owning it wins. */
+    const conflicts = dedupeConflicts([...evidenceConflicts, ...reported])
+      .filter((c) => !ownsHost(c.domain))
+      .slice(0, 6);
 
     const name = cap(parsed.name, 80) || entered || nameFromHost(host);
     const aliases = [...new Set([...strArray(parsed.aliases, 60, 6), host])]
@@ -486,7 +525,8 @@ export async function resolveIdentity(input: {
     return {
       name,
       domain: host,
-      aliases,
+      ownedDomains,
+      aliases: [...new Set([...aliases, ...ownedDomains])].filter((a) => a.toLowerCase() !== name.toLowerCase()),
       description,
       category: cap(parsed.category, 80) || cap(input.category, 80),
       includeTerms: dedupeLower(strArray(parsed.includeTerms, 48, 14)),

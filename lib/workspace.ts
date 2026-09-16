@@ -93,7 +93,17 @@ export async function saveWorkspace(input: {
  * identity resolution existed keeps behaving exactly as it did.
  */
 export function identityOf(ws: Pick<Workspace, "brand" | "domain" | "identity">): BrandIdentity {
-  return ws.identity ?? domainIdentity(ws.brand, ws.domain);
+  const base = ws.identity ?? domainIdentity(ws.brand, ws.domain);
+  const brand = ws.brand?.trim();
+  if (!brand) return base;
+
+  // Detection returns the LEGAL name — "Notion Labs, Inc." for a workspace whose
+  // brand is "Notion" — and answers never use it. The name the operator typed is
+  // the one engines actually write, so it is always a candidate. Without this a
+  // whole workspace can silently match nothing.
+  const known = [base.name, ...base.aliases].map((n) => n.toLowerCase());
+  if (known.includes(brand.toLowerCase())) return base;
+  return { ...base, aliases: [brand, ...base.aliases] };
 }
 
 /** Default prompt set generated for a brand — what the sampler runs nightly.
@@ -118,7 +128,7 @@ export function defaultPromptsFor(
     `Which ${c} would you recommend, and why?`,
     `What do you think of ${b}?`,
     `How does ${b} compare to its main competitors?`,
-    `Recommend a ${c} for someone who wants the best quality.`,
+    `Which of the ${c} is best for someone who wants the highest quality?`,
     `What are the top alternatives to ${b}?`,
     `Is ${b} worth it?`,
   ];

@@ -3,6 +3,7 @@ import { scoreRuns } from "@/lib/scoring";
 import { getWorkspace, identityOf, type Workspace } from "@/lib/workspace";
 import { summarize, MemoryStore, telemetry as telemetryStore } from "@/lib/telemetry";
 import { brandMatcher } from "@/lib/live/entity";
+import { isOwnedHost, ownedHosts } from "@/lib/brand/match";
 import { currentWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 import type { BrandIdentity } from "@/lib/brand/identity";
 
@@ -231,7 +232,7 @@ export async function getLiveMetrics(workspaceId?: string, limit = 2000): Promis
   // rows can never disagree about what counts.
   const isBrand = await brandMatcher(identity, wsId);
 
-  const scores = scoreRuns(runs, { brand, brandDomain: workspace.domain, competitors, brandMatch: isBrand });
+  const scores = scoreRuns(runs, { brand, brandDomain: workspace.domain, ownedDomains: ownedHosts(identity), competitors, brandMatch: isBrand });
 
   // ---- per-prompt (latest run per prompt text) ----
   const latest = new Map<string, PromptRun>();
@@ -313,13 +314,13 @@ export async function getLiveMetrics(workspaceId?: string, limit = 2000): Promis
       }
     }
   }
-  const ownDomain = workspace.domain.replace(/^www\./, "").toLowerCase();
+  // Owned means any host this brand owns, not only the one typed at onboarding.
   const citedDomains: CitedDomain[] = [...domainCounts.entries()]
     .map(([domain, count]) => ({
       domain,
       count,
       share: citationsTotal ? r1((count / citationsTotal) * 100) : 0,
-      owned: !!ownDomain && (domain === ownDomain || domain.endsWith(`.${ownDomain}`)),
+      owned: isOwnedHost(domain, identity),
     }))
     .sort((a, b) => b.count - a.count);
 
@@ -332,7 +333,7 @@ export async function getLiveMetrics(workspaceId?: string, limit = 2000): Promis
   const series: DayPoint[] = [...byDay.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, dayRuns]) => {
-      const s = scoreRuns(dayRuns, { brand, brandDomain: workspace.domain, competitors, brandMatch: isBrand });
+      const s = scoreRuns(dayRuns, { brand, brandDomain: workspace.domain, ownedDomains: ownedHosts(identity), competitors, brandMatch: isBrand });
       return { date, visibility: s.visibilityScore, shareOfVoice: s.shareOfVoice, runs: dayRuns.length };
     });
 
