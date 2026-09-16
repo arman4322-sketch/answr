@@ -145,10 +145,12 @@ export function matchBrand(
     };
   }
 
-  // Contested name. Only a one-sided answer is safe to settle here.
-  if (exclude === 0 && include >= 2) {
-    return { ...base, verdict: "brand", include, exclude, reason: `only this entity's vocabulary is present (${include} hits)` };
-  }
+  /* Contested name. Vocabulary can rule a mention OUT here, but never in.
+     Being in the right industry is not being the right company: an answer full
+     of category words may still be about a rival of the same name, or about the
+     category itself. So a positive verdict for a shared name always traces back
+     to hard evidence (the owned domain, handled above) or to an explicit model
+     judgement — never to a word count. */
   if (include === 0 && exclude > 0) {
     return { ...base, verdict: "other-entity", include, exclude, reason: otherIs() };
   }
@@ -156,9 +158,7 @@ export function matchBrand(
     return { ...base, verdict: "other-entity", include, exclude, reason: otherIs() };
   }
 
-  // 4. Signals from both sides, or from neither. An answer that surveys several
-  // companies of the same name is exactly the case a word count cannot settle,
-  // so it goes to the model rather than to a threshold.
+  // 4. Everything else about a shared name goes to the model.
   return {
     ...base,
     verdict: "unclear",
@@ -167,7 +167,9 @@ export function matchBrand(
     reason:
       include > 0 && exclude > 0
         ? `describes more than one "${identity.name}" (${include} vs ${exclude})`
-        : "name is shared and the answer gives no signal either way",
+        : include > 0
+          ? `in this entity's category, but the name is shared (${include} hits)`
+          : "name is shared and the answer gives no signal either way",
   };
 }
 
