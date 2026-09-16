@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
+import LockedPreview from "@/components/app/LockedPreview";
+import { capabilitySource } from "@/lib/preview/sources";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import AgentsTabs from "../agents/AgentsTabs";
 import { SetupState } from "../agents/TelemetryStates";
-import NotAvailable from "./NotAvailable";
+import PageHealthPreview from "./Preview";
 import { pageHealthSpec } from "./report";
 
-/* Agent Analytics — Page health — route kept, fixtures removed.
+/* Agent Analytics — Page health — route kept, fixtures removed, replaced by a
+   locked preview.
 
-   The screen used to open on one hard-coded URL with a hard-coded "last
-   indexed" line, three render-timing KPI cards with GOOD/FAIR bands, a
-   per-platform citations/crawls/referrals table with 30-day deltas, and a fix
-   note naming a bundle size. Nothing in the pipeline produces any of it: no
-   probe fetches or renders your pages, so there is no timing to band, and
-   neither the citation corpus nor the crawler-event log is resolved to a single
-   URL of yours, so the platform table has no source. Re-analyze and Submit to
-   index went with them — both acted on a crawler that isn't there.
+   The screen used to open on one hard-coded URL with hard-coded render timings,
+   a per-platform table and a fix note naming a bundle size. Nothing in the
+   pipeline produces any of it: no probe fetches or renders your pages.
+
+   What renders now is <LockedPreview>: the health KPIs and the per-URL table
+   (URL, crawlable, JS-dependent, schema, last crawled) a crawl would fill,
+   drawn at 28% opacity, desaturated, inert and aria-hidden, under a permanent
+   "illustrative — not measured data" badge, with the overlay naming the crawl
+   vendors, integration and pricing behind it. The rows are example.com paths:
+   the workspace's own domain is never shown carrying a verdict it has not been
+   given, and every value lives ONLY inside that wrapper.
 
    The route keeps its topbar and the Agent Analytics sub-nav so navigation is
    unchanged. The crumb's brand and the domain chip are read live, and Export
@@ -41,6 +47,7 @@ export default async function PageHealthPage() {
   const metrics = await getLiveMetrics();
   const brand = metrics.workspace?.brand ?? null;
   const domain = metrics.workspace?.domain || null;
+  const source = capabilitySource("page-health");
 
   return (
     <>
@@ -74,7 +81,11 @@ export default async function PageHealthPage() {
           {!metrics.configured && (
             <SetupState note="Page health would score your own pages for AI readability. Set up your brand and domain first — without them there is no site to look at, and the crawl that would measure a page still has to be built." />
           )}
-          <NotAvailable domain={domain} />
+          {source && (
+            <LockedPreview source={source}>
+              <PageHealthPreview />
+            </LockedPreview>
+          )}
         </div>
       </div>
     </>

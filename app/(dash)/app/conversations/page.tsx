@@ -1,16 +1,23 @@
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
+import LockedPreview from "@/components/app/LockedPreview";
+import { capabilitySource } from "@/lib/preview/sources";
 import { getWorkspace } from "@/lib/workspace";
-import NotAvailable from "./NotAvailable";
+import ConversationsPreview from "./Preview";
 
-/* Conversations — route kept, fixtures removed.
+/* Conversations — route kept, fixtures removed, replaced by a locked preview.
 
    The screen used to render a fixture set of transcripts with an invented
    sample size. None of that can come from the connected answer providers: a
    conversation explorer needs a licensed, consented conversation panel, which
-   is a commercial data contract rather than an API key. The fixture module,
-   the two-pane explorer, its CSV export and its filters are gone; the route
-   still renders so navigation (sidebar + ⌘K) doesn't 404.
+   is a commercial data contract rather than an API key.
+
+   What renders now is <LockedPreview>: the layout this capability would fill —
+   a conversation list with a volume column and a multi-turn thread — drawn at
+   28% opacity, desaturated, inert and aria-hidden, under a permanent
+   "illustrative — not measured data" badge, with the overlay explaining exactly
+   where the data would come from and what it would cost. Every value inside the
+   preview is a neutral placeholder and lives ONLY inside that wrapper.
 
    The only live value on the page is the workspace brand in the crumb — read
    from lib/workspace, the same source lib/live/metrics reads, so the header
@@ -25,6 +32,7 @@ export const dynamic = "force-dynamic";
 export default async function ConversationsPage() {
   const workspace = await getWorkspace();
   const brand = workspace?.brand ?? "Your brand";
+  const source = capabilitySource("conversations");
 
   return (
     <div className="frame-conversations" style={{flex:"1",display:"flex",flexDirection:"column",minWidth:"0"}}>
@@ -36,7 +44,11 @@ export default async function ConversationsPage() {
         exportLabel={null}
       />
       <div style={{padding:"24px",display:"flex",flexDirection:"column",gap:"16px"}}>
-        <NotAvailable />
+        {source && (
+          <LockedPreview source={source}>
+            <ConversationsPreview />
+          </LockedPreview>
+        )}
       </div>
     </div>
   );

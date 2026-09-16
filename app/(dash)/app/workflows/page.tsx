@@ -1,21 +1,26 @@
 import type { Metadata } from "next";
 import Topbar from "@/components/app/Topbar";
+import LockedPreview from "@/components/app/LockedPreview";
+import { capabilitySource } from "@/lib/preview/sources";
 import { getWorkspace } from "@/lib/workspace";
-import NotAvailable, { SetupNotice } from "./NotAvailable";
+import SetupNotice from "./SetupNotice";
+import WorkflowsPreview from "./Preview";
 
-/* Workflows — route kept, fixtures removed.
+/* Workflows — route kept, fixtures removed, replaced by a locked preview.
 
-   The screen used to ship three automation rules ("New-citation alert",
-   "Weekly content audit", "Low-visibility topic sweep") with triggers naming a
-   brand this deployment does not track, statuses, "last run" dates and run
-   counts, a selected rule's trigger/step chain, and a "Recent runs" feed of
-   things that never happened.
+   The screen used to ship three automation rules with triggers naming a brand
+   this deployment does not track, statuses, "last run" dates and run counts,
+   and a "Recent runs" feed of things that never happened. None of it is
+   derivable: no automation rule is stored anywhere, and there is no trigger
+   runner to evaluate one, so a rule cannot exist and a run cannot have
+   occurred.
 
-   None of it is derivable: no automation rule is stored anywhere, and there is
-   no trigger runner to evaluate one, so a rule cannot exist and a run cannot
-   have occurred. The template chips, the status filter, "+ New workflow",
-   "+ add step", "Save workflow" and "Run test" went with them — every one of
-   those controls acted on a rule engine that isn't there.
+   What renders now is <LockedPreview>: the rule cards (trigger → action →
+   notify) and the recent-runs feed the engine would fill, drawn at 28% opacity,
+   desaturated, inert and aria-hidden, under a permanent "illustrative — not
+   measured data" badge, with the overlay explaining what building the engine
+   would take. Every rule, run and timestamp inside is a neutral placeholder and
+   lives ONLY inside that wrapper.
 
    The topbar's brand is read live from lib/workspace so the header never names
    a brand this deployment isn't tracking. */
@@ -29,6 +34,7 @@ export const dynamic = "force-dynamic";
 export default async function WorkflowsPage() {
   const workspace = await getWorkspace();
   const brand = workspace?.brand ?? null;
+  const source = capabilitySource("workflows");
 
   return (
     <div className="frame-p2-workflows" style={{ flex: "1", display: "flex", flexDirection: "column", minWidth: "0" }}>
@@ -47,10 +53,15 @@ export default async function WorkflowsPage() {
           </div>
         </div>
         {/* Both states are true at once when nothing is configured: there is no
-            workspace to watch, AND no engine that could watch one. Neither fact
-            is hidden behind the other. */}
+            workspace to watch, AND no engine that could watch one. The setup
+            notice is a real statement about this deployment, so it stays outside
+            the preview. */}
         {!workspace && <SetupNotice />}
-        <NotAvailable brand={brand} />
+        {source && (
+          <LockedPreview source={source}>
+            <WorkflowsPreview />
+          </LockedPreview>
+        )}
       </div>
     </div>
   );
