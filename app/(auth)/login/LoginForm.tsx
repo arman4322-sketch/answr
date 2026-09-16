@@ -6,14 +6,16 @@ import { useState } from "react";
 import { toast } from "@/lib/toast";
 
 /* Demo credential gate — no backend. The demo workspace accepts
-   dana@nike.com / answr-demo; anything else shows the field-error state.
+   the demo credentials set on the deployment; anything else shows the field-error state.
 
    The OAuth-style buttons follow INTERACTIVITY_CONVENTIONS playbook 10 (toast
    pointing at the credential login). Toasts render via the Toaster mounted in
    the (auth) layout. */
 
 
-const OAUTH_TOAST = "This demo uses the credential login below — dana@nike.com / answr-demo.";
+/* Google and SSO sign-in do not exist on this deployment. The buttons used to
+   raise a toast that also printed the shared demo credentials in plain text on
+   the first screen a prospect sees. They are now visibly inert. */
 
 const oauthBtn: React.CSSProperties = {
   border: "1px solid var(--brd)",
@@ -28,9 +30,10 @@ const oauthBtn: React.CSSProperties = {
   cursor: "pointer",
   width: "100%",
 };
+const oauthDisabled: React.CSSProperties = { ...oauthBtn, opacity: 0.45, cursor: "not-allowed" };
 
-export default function LoginForm() {
-  const [email, setEmail] = useState("dana@nike.com");
+export default function LoginForm({ demoEmail, demoPassword }: { demoEmail?: string; demoPassword?: string }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +77,11 @@ export default function LoginForm() {
         <div style={{ fontSize: "19px", fontWeight: 600, marginTop: "24px" }}>Welcome back</div>
         <div style={{ fontSize: "13px", color: "var(--mut)", marginTop: "5px" }}>Log in to your workspace.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "22px" }}>
-          <button type="button" style={oauthBtn} onClick={() => toast(OAUTH_TOAST)}>Continue with Google</button>
-          <button type="button" style={oauthBtn} onClick={() => toast(OAUTH_TOAST)}>Continue with SSO / SAML</button>
+          <button type="button" style={oauthDisabled} disabled aria-disabled="true">Continue with Google</button>
+          <button type="button" style={oauthDisabled} disabled aria-disabled="true">Continue with SSO / SAML</button>
+          <div style={{ fontSize: "11px", color: "var(--fnt)", lineHeight: 1.5, marginTop: "2px" }}>
+            {"Google and SSO sign-in are not connected on this deployment. Use email and password."}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "20px 0" }}>
           <div style={{ flex: 1, height: "1px", background: "var(--brd)" }} />
@@ -128,9 +134,13 @@ export default function LoginForm() {
             No account? <Link href="/signup">Sign up</Link>
           </span>
         </div>
-        <div style={{ borderTop: "1px solid var(--brd)", marginTop: "20px", paddingTop: "14px", fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.6, fontVariantNumeric: "tabular-nums" }}>
-          Demo workspace — <span style={{ color: "var(--mut)" }}>dana@nike.com</span> · password <span style={{ color: "var(--mut)" }}>answr-demo</span>
-        </div>
+        {/* The shared demo account, read from this deployment's configuration
+            rather than hardcoded. It used to print a fixture address. */}
+        {demoEmail && demoPassword && (
+          <div style={{ borderTop: "1px solid var(--brd)", marginTop: "20px", paddingTop: "14px", fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.6, fontVariantNumeric: "tabular-nums" }}>
+            Demo workspace — <span style={{ color: "var(--mut)" }}>{demoEmail}</span> · password <span style={{ color: "var(--mut)" }}>{demoPassword}</span>
+          </div>
+        )}
       </div>
     </div>
   );

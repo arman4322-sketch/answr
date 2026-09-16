@@ -9,7 +9,7 @@ import { useState } from "react";
    Markup, copy and styles are the frame's, verbatim. */
 
 export default function ResetForm() {
-  const [email, setEmail] = useState("dana@nike.com");
+  const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
 
