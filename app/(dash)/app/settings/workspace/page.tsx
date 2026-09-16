@@ -5,6 +5,7 @@ import { getLiveMetrics } from "@/lib/live/metrics";
 import { ToastButton } from "../DemoControls";
 import SettingsRail from "../SettingsRail";
 import { EmptyState, NoBrandPanel, brandLabel, fmtDayUTC } from "../states";
+import BrandIdentityCard from "./BrandIdentityCard";
 
 /* Settings — Workspace.
 
@@ -96,6 +97,18 @@ export default async function WorkspacePage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Who this workspace actually tracks — the entity resolved from the
+              brand name AND the website, plus anything else found using the
+              same name. Rendered only when there is a workspace to describe;
+              identityOf() guarantees the profile whenever one exists. */}
+          {ws && m.identity && (
+            <BrandIdentityCard
+              identity={m.identity}
+              nameCollisions={m.nameCollisions}
+              answersSampled={m.answersSampled}
+            />
           )}
 
           <div style={card}>

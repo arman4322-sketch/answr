@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import { readDraft, writeDraft, type DraftTopic } from "../draft";
 
-/* Onboarding step 3 — AI-generated prompt set.
-   Reads the brand/category from the draft and asks the LLM for the topic areas
-   to track, with plausible per-topic prompt counts. Topic rows are include/
-   exclude toggles; the summary totals from what's included. */
+/* Onboarding step 3 — AI-generated prompt set, and the point where onboarding
+   stops being a draft.
+
+   "Start monitoring" writes the workspace: the brand, its website, the
+   competitors chosen in step 2, and the identity resolved from the website in
+   step 1. That identity is the whole reason the website is asked for — it is
+   what lets scoring tell this company apart from anything else sharing its
+   name — so it has to reach the server, not just the session. */
 
 const HIDDEN_FROM = 3;
 
@@ -26,11 +31,13 @@ function fallbackTopics(brand: string): DraftTopic[] {
 }
 
 export default function PromptSet() {
+  const router = useRouter();
   const [topics, setTopics] = useState<DraftTopic[]>([]);
   const [included, setIncluded] = useState<boolean[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<string | undefined>();
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const d = readDraft();
@@ -62,6 +69,43 @@ export default function PromptSet() {
   const extra = Math.max(0, topics.length - HIDDEN_FROM);
 
   function toggle(i: number) { setIncluded((list) => list.map((v, j) => (j === i ? !v : v))); }
+
+  /** Write the workspace, then move on. Nothing before this point persists. */
+  async function startMonitoring() {
+    if (saving) return;
+    const d = readDraft();
+    if (!d.brand) {
+      toast("Go back to step 1 and detect your brand first.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const r = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          brand: d.brand,
+          domain: d.website || d.identity?.domain,
+          category: d.category,
+          competitors: (d.competitors ?? []).map((c) => c.name),
+          // Resolved in step 1 from the website. Sending it saves the server
+          // re-deriving it, and keeps what the operator was shown and what gets
+          // measured the same thing.
+          identity: d.identity,
+        }),
+      });
+      const res = (await r.json()) as { ok: boolean; error?: string };
+      if (!res.ok) {
+        toast(res.error || "Couldn't save your workspace — try again.");
+        return;
+      }
+      router.push("/app/welcome");
+    } catch (e) {
+      toast((e as Error).message || "Couldn't save your workspace — try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -117,11 +161,19 @@ export default function PromptSet() {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
         <Link href="/onboarding/competitors" style={{ fontSize: "13px", color: "var(--fnt)" }}>{"← Back"}</Link>
-        {chosen.length === 0 ? (
-          <button type="button" className="btn-ac" onClick={() => toast("Keep at least one topic — monitoring needs prompts to run.")} style={{ display: "inline-block", fontSize: "13px", fontWeight: "600", borderRadius: "8px", padding: "10px 22px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{"Start monitoring"}</button>
-        ) : (
-          <Link href="/app/welcome" className="btn-ac" style={{ display: "inline-block", fontSize: "13px", fontWeight: "600", borderRadius: "8px", padding: "10px 22px" }}>{"Start monitoring"}</Link>
-        )}
+        <button
+          type="button"
+          className="btn-ac"
+          disabled={saving}
+          onClick={() =>
+            chosen.length === 0
+              ? toast("Keep at least one topic — monitoring needs prompts to run.")
+              : void startMonitoring()
+          }
+          style={{ display: "inline-block", fontSize: "13px", fontWeight: "600", borderRadius: "8px", padding: "10px 22px", border: "none", cursor: saving ? "default" : "pointer", fontFamily: "inherit", opacity: saving ? 0.6 : 1 }}
+        >
+          {saving ? "Setting up…" : "Start monitoring"}
+        </button>
       </div>
       <style>{`@keyframes ob-spin{to{transform:rotate(360deg)}} .ob-spin{animation:ob-spin .8s linear infinite}`}</style>
     </>

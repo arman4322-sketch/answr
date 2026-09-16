@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { writeDraft } from "../draft";
+import type { BrandIdentity } from "@/lib/brand/identity";
 
 /* Onboarding step 1 — website field + AI brand detection.
    Enter (or "Detect brand") calls /api/suggest/brand to identify the real brand,
@@ -10,7 +11,16 @@ import { writeDraft } from "../draft";
    saves the draft and advances. Detecting a new URL clears the downstream draft
    so steps 2–3 regenerate for the new brand. */
 
-type Detected = { name: string; category: string; aliases: string[]; fallback?: boolean };
+type Conflict = { name: string; what: string; domain?: string };
+type Detected = {
+  name: string;
+  category: string;
+  aliases: string[];
+  fallback?: boolean;
+  description?: string;
+  ambiguous?: boolean;
+  conflicts?: Conflict[];
+};
 
 export default function BrandField() {
   const router = useRouter();
@@ -34,15 +44,41 @@ export default function BrandField() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const d = (await r.json()) as { ok: boolean; name?: string; category?: string; aliases?: string[]; fallback?: boolean; error?: string };
+      const d = (await r.json()) as {
+        ok: boolean;
+        name?: string;
+        category?: string;
+        aliases?: string[];
+        fallback?: boolean;
+        identity?: BrandIdentity;
+        error?: string;
+      };
       if (!d.ok || !d.name) {
         setError(d.error || "Couldn't detect the brand — try again.");
         return;
       }
-      const next: Detected = { name: d.name, category: d.category || "", aliases: d.aliases || [], fallback: d.fallback };
+      const next: Detected = {
+        name: d.name,
+        category: d.category || "",
+        aliases: d.aliases || [],
+        fallback: d.fallback,
+        description: d.identity?.description,
+        ambiguous: d.identity?.ambiguous,
+        conflicts: d.identity?.conflicts,
+      };
       setDetected(next);
-      // Save brand + reset downstream so steps 2–3 regenerate for this brand.
-      writeDraft({ website: url, brand: next.name, category: next.category, aliases: next.aliases, competitors: undefined, topics: undefined });
+      // Save brand + identity, and reset downstream so steps 2–3 regenerate for
+      // this brand. The identity is what later tells this company apart from
+      // anything else of the same name, so it travels with the draft.
+      writeDraft({
+        website: url,
+        brand: next.name,
+        category: next.category,
+        aliases: next.aliases,
+        identity: d.identity,
+        competitors: undefined,
+        topics: undefined,
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -94,6 +130,9 @@ export default function BrandField() {
             </div>
             <div style={{ marginLeft: "auto", fontSize: "10px", fontWeight: "500", color: "var(--ac)" }}>{detected.fallback ? "FROM DOMAIN" : "DETECTED ✓"}</div>
           </div>
+          {detected.description && (
+            <div style={{ fontSize: "12px", color: "var(--mut)", lineHeight: 1.6, marginTop: "12px" }}>{detected.description}</div>
+          )}
           {detected.aliases.length > 0 && (
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "14px" }}>
               {detected.aliases.map((a) => (
@@ -101,6 +140,27 @@ export default function BrandField() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* A shared name is the single biggest source of wrong numbers, so it is
+          said here, before anything is tracked, rather than discovered later. */}
+      {!detecting && detected?.ambiguous && detected.conflicts && detected.conflicts.length > 0 && (
+        <div
+          role="note"
+          style={{ marginTop: "12px", background: "var(--bg0)", border: "1px solid var(--brd)", borderLeft: "3px solid var(--ac)", borderRadius: "10px", padding: "14px 16px" }}
+        >
+          <div style={{ fontSize: "12.5px", fontWeight: 600 }}>
+            {`Other companies also go by “${detected.name}”`}
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--mut)", lineHeight: 1.65, marginTop: "6px" }}>
+            {`We'll use ${website.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "") || "your website"} to tell you apart, so answers about them aren't counted as mentions of you.`}
+          </div>
+          <ul style={{ margin: "10px 0 0", padding: "0 0 0 16px", fontSize: "11.5px", color: "var(--fnt)", lineHeight: 1.7 }}>
+            {detected.conflicts.slice(0, 3).map((c) => (
+              <li key={c.domain ?? c.what}>{c.domain ? `${c.domain} — ${c.what}` : c.what}</li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -279,22 +279,57 @@ export async function enrichConflicts(conflicts: EntityConflict[]): Promise<Enti
       const site = await readSite(c.domain!, 8000);
       if (!site.ok) return c;
       const detail = [site.title, site.description].filter(Boolean).join(" — ").replace(/\s+/g, " ").trim();
-      return detail ? { ...c, what: detail.slice(0, 160) } : c;
+      return detail ? { ...c, what: trimTo(detail, 160) } : c;
     }),
   );
   return out;
 }
 
+/** Cut at a word boundary rather than mid-word, and mark it as cut. */
+function trimTo(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s.,;:|—-]+$/, "")}…`;
+}
+
+/** A subdomain of a conflict is the same company, not another one. */
+function sameSite(a: string, b: string): boolean {
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+}
+
 function dedupeConflicts(list: EntityConflict[]): EntityConflict[] {
-  const seen = new Set<string>();
   const out: EntityConflict[] = [];
+  const plain = new Set<string>();
   for (const c of list) {
-    const key = (c.domain ?? `${c.name}|${c.what}`).toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(c);
+    if (!c.domain) {
+      // No domain to compare on; fall back to the text.
+      const key = `${c.name}|${c.what}`.toLowerCase();
+      if (plain.has(key)) continue;
+      plain.add(key);
+      out.push(c);
+      continue;
+    }
+    const existing = out.findIndex((o) => o.domain && sameSite(o.domain, c.domain!));
+    if (existing < 0) {
+      out.push(c);
+      continue;
+    }
+    // Keep the apex domain, and whichever description actually says something.
+    const kept = out[existing];
+    const preferNew = c.domain.length < kept.domain!.length;
+    out[existing] = {
+      name: kept.name,
+      domain: preferNew ? c.domain : kept.domain,
+      what: describes(kept.what) ? kept.what : describes(c.what) ? c.what : kept.what,
+    };
   }
   return out;
+}
+
+/** True when `what` is a real description rather than the hostname placeholder. */
+function describes(what: string): boolean {
+  return !/^a different "/i.test(what);
 }
 
 /**

@@ -1,6 +1,14 @@
-/* Onboarding draft — carries the AI-detected brand, competitors, and topics
-   across the three onboarding steps via sessionStorage (client-only). No DB
-   needed; a real build would persist this to a workspace record. */
+import type { BrandIdentity } from "@/lib/brand/identity";
+
+/* Onboarding draft — carries the detected brand, its identity, competitors and
+   topics across the three onboarding steps via sessionStorage (client-only).
+   The last step writes it to the workspace through /api/workspace; until then
+   nothing is persisted, so a half-finished onboarding leaves no trace.
+
+   `identity` is the important one. It is resolved in step 1 from the website —
+   the only thing the operator gives us that names exactly one company — and
+   carrying it forward is what stops every later metric from measuring a
+   different business that happens to share the name. */
 
 export type DraftCompetitor = { name: string; domain: string };
 export type DraftTopic = { name: string; prompts: number };
@@ -10,6 +18,8 @@ export interface OnboardingDraft {
   brand?: string;
   category?: string;
   aliases?: string[];
+  /** entity profile resolved from the website in step 1 */
+  identity?: BrandIdentity;
   competitors?: DraftCompetitor[];
   topics?: DraftTopic[];
 }

@@ -8,6 +8,7 @@ import OverviewKpis from "./OverviewKpis";
 import PlatformVisibilityCard from "./PlatformVisibilityCard";
 import CompetitorSovCard from "./CompetitorSovCard";
 import TopSourcesCard from "./TopSourcesCard";
+import NameCollisionNotice from "./NameCollisionNotice";
 import DemoActionButton from "./DemoActionButton";
 import { overviewSpec } from "./report";
 import { historyNote, int, s, stampUTC, summaryLines } from "./format";
@@ -124,6 +125,10 @@ export default async function Page() {
           )}
 
           <OverviewKpis m={m} />
+
+          {/* Sits under the KPIs it explains: those numbers exclude answers that
+              named the brand but meant someone else. Renders nothing at zero. */}
+          <NameCollisionNotice m={m} />
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 372px",gap:"14px"}}>
             <div style={{background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"10px",padding:"17px 19px"}}>
