@@ -21,6 +21,16 @@ import { exportStem, historyLabel } from "./live";
 
 const PREVIEW_ROWS = 3;
 
+/* A tab that exists in the layout but has no implementation behind it: dimmed,
+   not focusable, not clickable, and marked disabled to assistive tech. */
+const DEAD_TAB: React.CSSProperties = {
+  padding: "7px 12px",
+  color: "var(--mut)",
+  opacity: 0.45,
+  cursor: "not-allowed",
+  userSelect: "none",
+};
+
 function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -30,7 +40,12 @@ function downloadBlob(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
-const TAB_NOTE = "Raw answers is the format the live sampler stores — summaries and citations-only views aren't built yet.";
+/* The two other export formats are not implemented: the sampler stores whole
+   answer rows, and no summariser or citations-only projection exists over them.
+   Their tabs stay in the row so the shape of the dialog is honest about what is
+   planned, but they are inert, dimmed and aria-disabled, and the reason is
+   printed under the row rather than hidden in a toast. */
+const TAB_NOTE = "Raw answers is the only format the sampler can export — summaries and citations-only views aren't built.";
 
 export default function ExportModal({ m }: { m: LiveMetrics }) {
   const [open, setOpen] = useState(false);
@@ -54,7 +69,7 @@ export default function ExportModal({ m }: { m: LiveMetrics }) {
   const scope = m.hasData
     ? `${fmtInt(m.answersSampled)} answers sampled · ${historyLabel(m.days)} · all platforms`
     : m.configured
-      ? "Nothing sampled yet — the first run collects the answers to export"
+      ? "No sample has run yet — start one from Settings › Platforms"
       : "No workspace configured — nothing has been sampled";
 
   /* The report states the window its rows actually cover; when the topbar
@@ -110,11 +125,16 @@ export default function ExportModal({ m }: { m: LiveMetrics }) {
           <div role="dialog" aria-modal="true" aria-label="Export answers" style={{width:"560px",background:"var(--bg1)",border:"1px solid var(--brd)",borderRadius:"12px",padding:"22px",boxShadow:"0 30px 80px rgba(0,0,0,.5)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"15px",fontWeight:"600"}}>{"Export answers"}</span><button type="button" aria-label="Close" autoFocus onClick={close} style={{color:"var(--fnt)",background:"none",border:"none",padding:0,cursor:"pointer",fontSize:"inherit",fontFamily:"inherit",lineHeight:1}}>{"✕"}</button></div>
             <div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"4px",fontVariantNumeric:"tabular-nums"}}>{scope}</div>
-            <div style={{display:"flex",gap:"2px",marginTop:"14px",borderBottom:"1px solid var(--brd)",fontSize:"12.5px"}}><div style={{padding:"7px 12px",color:"var(--tx)",fontWeight:"500",borderBottom:"2px solid var(--ac)"}}>{"Raw answers"}</div><button type="button" onClick={() => toast(TAB_NOTE)} style={{padding:"7px 12px",color:"var(--mut)",background:"none",border:"none",fontSize:"12.5px",fontFamily:"inherit",cursor:"pointer"}}>{"Summaries"}</button><button type="button" onClick={() => toast(TAB_NOTE)} style={{padding:"7px 12px",color:"var(--mut)",background:"none",border:"none",fontSize:"12.5px",fontFamily:"inherit",cursor:"pointer"}}>{"Citations only"}</button></div>
+            <div style={{display:"flex",gap:"2px",marginTop:"14px",borderBottom:"1px solid var(--brd)",fontSize:"12.5px"}}>
+              <div style={{padding:"7px 12px",color:"var(--tx)",fontWeight:"500",borderBottom:"2px solid var(--ac)"}}>{"Raw answers"}</div>
+              <span aria-disabled="true" title={TAB_NOTE} style={DEAD_TAB}>{"Summaries"}</span>
+              <span aria-disabled="true" title={TAB_NOTE} style={DEAD_TAB}>{"Citations only"}</span>
+            </div>
+            <div style={{fontSize:"11px",color:"var(--fnt)",marginTop:"6px",lineHeight:1.5}}>{TAB_NOTE}</div>
             <div style={{border:"1px solid var(--brd)",borderRadius:"8px",overflow:"hidden",marginTop:"12px"}}>
               <div style={{display:"grid",gridTemplateColumns:".8fr 2fr .7fr .6fr",padding:"7px 12px",fontSize:"10px",fontWeight:"500",color:"var(--fnt)",background:"var(--bg2)"}}><span>{"DATE"}</span><span>{"PROMPT"}</span><span>{"MENTIONED"}</span><span>{"POSITION"}</span></div>
               {preview.length === 0 ? (
-                <div style={{padding:"14px 12px",fontSize:"11.5px",color:"var(--mut)"}}>{m.configured ? "No sampled answers yet — the first run lands tonight." : "No workspace configured yet."}</div>
+                <div style={{padding:"14px 12px",fontSize:"11.5px",color:"var(--mut)"}}>{m.configured ? "No sample has run yet — start one from Settings › Platforms." : "No workspace configured yet."}</div>
               ) : (
                 preview.map((p, i) => (
                   <div key={`${p.prompt}-${p.ts}`} style={{display:"grid",gridTemplateColumns:".8fr 2fr .7fr .6fr",padding:"8px 12px",fontSize:"11.5px",alignItems:"center",fontVariantNumeric:"tabular-nums",...(i > 0 ? {borderTop:"1px solid var(--brd)"} : {})}}>

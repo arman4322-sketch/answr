@@ -26,7 +26,7 @@ export default function OverviewKpis({ m }: { m: LiveMetrics }) {
   /* One caption for the two trended cards: what the delta covers, or why there
      isn't one yet. */
   const trendSub = !m.hasData
-    ? "Collecting — first sample runs tonight"
+    ? "No sample has run yet"
     : m.series.length < 2
       ? `${historyNote(m.days)} — trend starts on the second sampled day`
       : `Change over ${historyNote(m.days)}`;
@@ -65,7 +65,7 @@ export default function OverviewKpis({ m }: { m: LiveMetrics }) {
         sub={
           m.hasData
             ? `${int(m.uniqueCitedDomains)} domain${s(m.uniqueCitedDomains)} · ${pct(m.ownedCitationShare)} owned`
-            : "Collecting — first sample runs tonight"
+            : "No sample has run yet"
         }
       />
 
@@ -78,7 +78,7 @@ export default function OverviewKpis({ m }: { m: LiveMetrics }) {
           m.avgAnswerPosition == null
             ? m.hasData
               ? "Not named in any sampled answer yet"
-              : "Collecting — first sample runs tonight"
+              : "No sample has run yet"
             : `Named first in ${int(m.answerRankFirst)} answer${s(m.answerRankFirst)}`
         }
       />

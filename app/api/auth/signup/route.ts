@@ -20,13 +20,12 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ ok: true, user: { id: result.user.id, email: result.user.email, name: result.user.name, workspaceId: result.user.workspaceId } });
   res.cookies.set(sessionCookie(result.session.id));
-  // Also grant demo access so the flow reaches /app after onboarding. The auth
-  // session lives in a non-durable store (unreliable across serverless instances
-  // until KV is configured), but the demo gate cookie is validated statelessly —
-  // so signup → onboarding → dashboard works reliably. Real per-user tenancy is
-  // the buyer's build (HANDOFF/LAUNCH_ROADMAP).
-  res.cookies.set(GATE_COOKIE, gateToken(), {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30,
-  });
+  /* Signup used to ALSO set the shared demo gate cookie, so that the flow could
+     reach /app even if the session store lost the record. That is no longer
+     needed — the proxy and the dashboard layout both accept a session on its own
+     merit — and it was actively harmful: the gate cookie is stateless and lasts
+     30 days, so anyone who signed up silently acquired permanent access to the
+     demo workspace's data without ever knowing the passphrase, and kept it after
+     logging out. An account gets its own workspace and nothing else. */
   return res;
 }

@@ -4,6 +4,7 @@ import { getWorkspace, identityOf } from "@/lib/workspace";
 import { pickProvider } from "@/lib/providers/registry";
 import { matchBrand, type MentionVerdict } from "@/lib/brand/match";
 import { identitySummary, type BrandIdentity } from "@/lib/brand/identity";
+import { currentWorkspaceId, scopeKey } from "@/lib/tenant";
 
 /* Entity verification — the escalation path for answers the heuristic cannot
    settle.
@@ -45,17 +46,22 @@ function contains(haystack: string, needle: string): boolean {
   return norm(haystack).includes(norm(needle));
 }
 
-const COLLECTION = "entity_verdicts";
+/* A verdict is about one workspace's brand, so the collection is namespaced by
+ * workspace. The demo workspace keeps the unsuffixed name (lib/tenant scopeKey),
+ * so everything judged before tenancy stays exactly where it is. */
+const verdicts = (workspaceId: string) => scopeKey("entity_verdicts", workspaceId);
 
-export function listEntityVerdicts(): Promise<EntityVerdict[]> {
-  return db().list<EntityVerdict>(COLLECTION);
+export async function listEntityVerdicts(workspaceId?: string): Promise<EntityVerdict[]> {
+  const id = workspaceId ?? (await currentWorkspaceId());
+  return db().list<EntityVerdict>(verdicts(id));
 }
 
 /** Drop every stored verdict. Called when the brand profile changes: a verdict
  *  is only meaningful against the profile it was made under. */
-export async function clearEntityVerdicts(): Promise<number> {
-  const all = await listEntityVerdicts().catch(() => []);
-  for (const v of all) await db().remove(COLLECTION, v.id);
+export async function clearEntityVerdicts(workspaceId?: string): Promise<number> {
+  const id = workspaceId ?? (await currentWorkspaceId());
+  const all = await listEntityVerdicts(id).catch(() => []);
+  for (const v of all) await db().remove(verdicts(id), v.id);
   return all.length;
 }
 
@@ -96,9 +102,13 @@ export interface BrandMatcher {
  * conservative direction — a coincidence of names never inflates a score, and
  * running verification only ever revises numbers upward for answers that were
  * genuinely about this company.
+ *
+ * `workspaceId` is required rather than resolved here: this is a helper called
+ * from entry points that have already resolved the tenant, and re-resolving it
+ * is how one request ends up reading two workspaces.
  */
-export async function brandMatcher(identity: BrandIdentity): Promise<BrandMatcher> {
-  const stored = identity.ambiguous ? await listEntityVerdicts().catch(() => []) : [];
+export async function brandMatcher(identity: BrandIdentity, workspaceId: string): Promise<BrandMatcher> {
+  const stored = identity.ambiguous ? await listEntityVerdicts(workspaceId).catch(() => []) : [];
   const byId = new Map(stored.map((v) => [v.id, v]));
 
   const explain = (runId: string, a: SampledAnswer) => {
@@ -129,10 +139,11 @@ export async function brandMatcher(identity: BrandIdentity): Promise<BrandMatche
 }
 
 /** The matcher for the configured workspace, or null when none is configured. */
-export async function workspaceMatcher(): Promise<BrandMatcher | null> {
-  const ws = await getWorkspace();
+export async function workspaceMatcher(workspaceId?: string): Promise<BrandMatcher | null> {
+  const id = workspaceId ?? (await currentWorkspaceId());
+  const ws = await getWorkspace(id);
   if (!ws) return null;
-  return brandMatcher(identityOf(ws));
+  return brandMatcher(identityOf(ws), id);
 }
 
 /* ------------------------------------------------------------------ */
@@ -158,13 +169,15 @@ function hostOfUrl(url: string): string | null {
  */
 export async function observedConflicts(
   identity: BrandIdentity,
+  workspaceId?: string,
   limit = 500,
 ): Promise<{ name: string; what: string; domain: string; citations: number }[]> {
   const token = identity.name.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (token.length < 4) return [];
   const own = identity.domain.toLowerCase();
 
-  const runs = await answerStore().recentRuns(limit).catch(() => [] as PromptRun[]);
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  const runs = await answerStore(wsId).recentRuns(limit).catch(() => [] as PromptRun[]);
   const counts = new Map<string, number>();
   for (const run of runs) {
     for (const a of run.answers) {
@@ -217,12 +230,16 @@ export interface EntityReport {
  * No-ops when the brand name is not shared with anything: there is nothing to
  * disambiguate and nothing to spend.
  */
-export async function runEntityVerification(opts: { limit?: number } = {}): Promise<EntityReport> {
+export async function runEntityVerification(
+  opts: { limit?: number; workspaceId?: string } = {},
+): Promise<EntityReport> {
   const base: EntityReport = {
     ok: false, examined: 0, resolvedLocally: 0, verified: 0, rejected: 0, skipped: 0, errors: 0,
   };
 
-  const ws = await getWorkspace();
+  // Resolve the tenant once; every read and write below uses this id.
+  const workspaceId = opts.workspaceId ?? (await currentWorkspaceId());
+  const ws = await getWorkspace(workspaceId);
   if (!ws) return { ...base, reason: "no-workspace" };
   const identity = identityOf(ws);
   if (!identity.ambiguous) {
@@ -234,10 +251,10 @@ export async function runEntityVerification(opts: { limit?: number } = {}): Prom
 
   // Every run, segmented or not: a verdict is about one answer, and the
   // regional and audience screens need theirs judged too.
-  const runs: PromptRun[] = await answerStore().recentRuns(opts.limit ?? 2000);
+  const runs: PromptRun[] = await answerStore(workspaceId).recentRuns(opts.limit ?? 2000);
   if (runs.length === 0) return { ...base, reason: "no-answers", provider: provider.id };
 
-  const existing = await listEntityVerdicts();
+  const existing = await listEntityVerdicts(workspaceId);
   const done = new Set(existing.map((v) => v.id));
 
   const pending: { id: string; run: PromptRun; answer: SampledAnswer }[] = [];
@@ -328,7 +345,7 @@ export async function runEntityVerification(opts: { limit?: number } = {}): Prom
             : String(parsed.actually ?? "").trim().slice(0, 120) || undefined,
         ts: Date.now(),
       };
-      await db().put(COLLECTION, rec);
+      await db().put(verdicts(workspaceId), rec);
       verified += 1;
       if (!rec.isBrand) rejected += 1;
     } catch {

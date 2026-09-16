@@ -2,6 +2,7 @@ import { readKvEnv } from "@/lib/telemetry/kv";
 import { filePushCapped, fileListCapped, fileStoreAvailable } from "@/lib/db/filestore";
 import type { Citation, ProviderId } from "@/lib/providers/types";
 import type { SegmentTag } from "@/lib/segments/types";
+import { scopeKey, currentWorkspaceId } from "@/lib/tenant";
 
 /* Answer store — where the nightly sampler writes the answers it collects.
    Mirrors lib/telemetry's design exactly: a durable Upstash/Redis store that
@@ -45,6 +46,8 @@ export interface PromptRun {
 export interface AnswerStore {
   kind: "memory" | "kv";
   durable: boolean;
+  /** the workspace whose answers this store holds */
+  workspaceId: string;
   saveRun(run: PromptRun): Promise<void>;
   recentRuns(limit?: number): Promise<PromptRun[]>;
 }
@@ -54,10 +57,16 @@ export interface AnswerStore {
 const MAX_RUNS = 2000;
 const KEY_RUNS = "answr:sampler:runs";
 
+/** Each workspace gets its own list of runs. The demo workspace keeps the
+ *  original key so everything collected before tenancy stays readable. */
+const runsKey = (workspaceId: string) => scopeKey(KEY_RUNS, workspaceId);
+const fileKey = (workspaceId: string) => scopeKey("sampler_runs", workspaceId).replace(/:/g, "_");
+
 class MemoryAnswerStore implements AnswerStore {
   kind = "memory" as const;
   durable = false;
   private runs: PromptRun[] = [];
+  constructor(readonly workspaceId: string) {}
   async saveRun(run: PromptRun) {
     this.runs.unshift(run);
     if (this.runs.length > MAX_RUNS) this.runs.length = MAX_RUNS;
@@ -70,7 +79,10 @@ class MemoryAnswerStore implements AnswerStore {
 class KvAnswerStore implements AnswerStore {
   kind = "kv" as const;
   durable = true;
-  constructor(private creds: { url: string; token: string }) {}
+  constructor(
+    private creds: { url: string; token: string },
+    readonly workspaceId: string,
+  ) {}
 
   private async pipeline(commands: (string | number)[][]): Promise<unknown[]> {
     const res = await fetch(`${this.creds.url}/pipeline`, {
@@ -84,14 +96,15 @@ class KvAnswerStore implements AnswerStore {
   }
 
   async saveRun(run: PromptRun) {
+    const key = runsKey(this.workspaceId);
     await this.pipeline([
-      ["LPUSH", KEY_RUNS, JSON.stringify(run)],
-      ["LTRIM", KEY_RUNS, 0, MAX_RUNS - 1],
+      ["LPUSH", key, JSON.stringify(run)],
+      ["LTRIM", key, 0, MAX_RUNS - 1],
     ]);
   }
 
   async recentRuns(limit = 50) {
-    const [raw] = await this.pipeline([["LRANGE", KEY_RUNS, 0, limit - 1]]);
+    const [raw] = await this.pipeline([["LRANGE", runsKey(this.workspaceId), 0, limit - 1]]);
     const list = Array.isArray(raw) ? (raw as string[]) : [];
     const runs: PromptRun[] = [];
     for (const s of list) {
@@ -111,24 +124,40 @@ class KvAnswerStore implements AnswerStore {
 class FileAnswerStore implements AnswerStore {
   kind = "memory" as const; // dev-only; reported as non-durable
   durable = false;
+  constructor(readonly workspaceId: string) {}
   async saveRun(run: PromptRun) {
-    filePushCapped("sampler_runs", run, 2000);
+    filePushCapped(fileKey(this.workspaceId), run, 2000);
   }
   async recentRuns(limit = 50) {
-    return fileListCapped<PromptRun>("sampler_runs", limit);
+    return fileListCapped<PromptRun>(fileKey(this.workspaceId), limit);
   }
 }
 
-let cached: AnswerStore | null = null;
+// One store per workspace. The memory store in particular must not be shared:
+// a single instance would hand one workspace's answers to another.
+const cached = new Map<string, AnswerStore>();
 
-/** Durable KV when configured, a local file store in development, else memory. */
-export function answerStore(env: NodeJS.ProcessEnv = process.env): AnswerStore {
-  if (cached) return cached;
+/**
+ * The answer store for a workspace.
+ *
+ * Durable KV when configured, a local file store in development, else memory.
+ * The workspace id is required — omitting it used to mean "the only workspace",
+ * which is how every account ended up reading the same answers.
+ */
+export function answerStore(workspaceId: string, env: NodeJS.ProcessEnv = process.env): AnswerStore {
+  const hit = cached.get(workspaceId);
+  if (hit) return hit;
   const creds = readKvEnv(env);
-  cached = creds
-    ? new KvAnswerStore(creds)
+  const store: AnswerStore = creds
+    ? new KvAnswerStore(creds, workspaceId)
     : fileStoreAvailable(env)
-      ? new FileAnswerStore()
-      : new MemoryAnswerStore();
-  return cached;
+      ? new FileAnswerStore(workspaceId)
+      : new MemoryAnswerStore(workspaceId);
+  cached.set(workspaceId, store);
+  return store;
+}
+
+/** The answer store for the workspace this request belongs to. */
+export async function requestAnswerStore(env: NodeJS.ProcessEnv = process.env): Promise<AnswerStore> {
+  return answerStore(await currentWorkspaceId(), env);
 }

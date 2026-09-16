@@ -2,6 +2,7 @@ import { configuredProviders } from "@/lib/providers/registry";
 import type { AnswerProvider } from "@/lib/providers/types";
 import { answerStore, type PromptRun, type SampledAnswer } from "./store";
 import { getWorkspace } from "@/lib/workspace";
+import { currentWorkspaceId } from "@/lib/tenant";
 import { trackedRegions, listAudiences } from "@/lib/segments/catalog";
 import { locationPrompt, personaPrompt, type Segment, type SegmentKind } from "@/lib/segments/types";
 
@@ -60,12 +61,19 @@ export interface SegmentRunOptions {
    */
   promptLimit?: number;
   timeoutMs?: number;
+  /**
+   * Whose segments to sample and whose answer store to write to. Background
+   * callers (cron, scripts) have no request behind them and MUST pass this.
+   */
+  workspaceId?: string;
 }
 
 export async function runSegmentSampler(opts: SegmentRunOptions): Promise<SegmentRunReport> {
   const startedAt = Date.now();
   const providers = configuredProviders();
-  const store = answerStore();
+  // Resolve the tenant once; workspace, segments and store all share this id.
+  const workspaceId = opts.workspaceId ?? (await currentWorkspaceId());
+  const store = answerStore(workspaceId);
   const base: Omit<SegmentRunReport, "ok" | "reason"> = {
     kind: opts.kind,
     startedAt,
@@ -80,10 +88,11 @@ export async function runSegmentSampler(opts: SegmentRunOptions): Promise<Segmen
 
   if (providers.length === 0) return { ...base, ok: false, reason: "no-providers" };
 
-  const ws = await getWorkspace().catch(() => null);
+  const ws = await getWorkspace(workspaceId).catch(() => null);
   if (!ws) return { ...base, ok: false, reason: "no-workspace" };
 
-  const all: Segment[] = opts.kind === "region" ? await trackedRegions() : await listAudiences();
+  const all: Segment[] =
+    opts.kind === "region" ? await trackedRegions(workspaceId) : await listAudiences(workspaceId);
   const segments = opts.ids?.length ? all.filter((s) => opts.ids!.includes(s.id)) : all;
   if (segments.length === 0) return { ...base, ok: false, reason: "no-segments" };
 

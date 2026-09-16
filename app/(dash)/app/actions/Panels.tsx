@@ -61,20 +61,34 @@ export function SetupNotice() {
   );
 }
 
+/* No schedule is promised here. The heading used to read "first sample runs
+   tonight", which nothing backed: the only cron (vercel.json → /api/runs/execute,
+   07:00 UTC) names no workspace, so it runs the demo workspace and no other, and
+   it does nothing at all unless a cron secret is configured. What IS real is the
+   on-demand trigger — POST /api/runs/start, driven by the welcome screen and by
+   "Run now" in Settings › Platforms — so the notice points at that instead of
+   telling a user to wait for something that may never come. */
 export function CollectingNotice({ prompts }: { prompts: number }) {
   return (
     <div style={panel}>
-      <div style={title}>Collecting — first sample runs tonight</div>
+      <div style={title}>Collecting — no answers sampled yet</div>
       <div style={body}>
         {prompts > 0
-          ? `Your workspace is configured and ${prompts} prompt${prompts === 1 ? " is" : "s are"} queued. `
+          ? `Your workspace is configured and ${prompts} prompt${prompts === 1 ? " is" : "s are"} tracked. `
           : "Your workspace is configured. "}
         No answers have been sampled yet, so no gap can be observed and the queue is empty. Nothing below is an
-        estimate — the queue fills with real prompts the moment the first run lands.
+        estimate — the queue fills with real prompts the moment a run lands. Start one from Settings › Platforms;
+        it samples your tracked prompts against every connected provider.
       </div>
-      <Link href="/app/prompts" style={link}>
-        Review the tracked prompt set →
+      <Link href="/app/settings/platforms" style={link}>
+        Run the sampler now →
       </Link>
+      <span style={{ ...link, color: "var(--fnt)", marginLeft: "14px" }}>
+        or{" "}
+        <Link href="/app/prompts" style={{ color: "var(--ac)", textDecoration: "none" }}>
+          review the tracked prompt set
+        </Link>
+      </span>
     </div>
   );
 }

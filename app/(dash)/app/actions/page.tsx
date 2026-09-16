@@ -7,6 +7,7 @@ import ReportCsvButton from "@/components/ui/ReportCsvButton";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { listActions } from "@/lib/db/entities";
 import { db } from "@/lib/db";
+import { currentWorkspaceId } from "@/lib/tenant";
 import NewActionButton from "./NewActionButton";
 import { CollectingNotice, NoGapsNotice, NotAvailablePanel, SetupNotice } from "./Panels";
 import {
@@ -53,7 +54,10 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const WORKSPACE = "demo";
+/* Saved actions belong to the workspace this request is for. The screen used
+   to read a hardcoded "demo" bucket shared by every tenant; it now resolves the
+   tenant once (lib/tenant) and hands the SAME id to the metrics layer, so the
+   queue and the saved list can never describe two different workspaces. */
 
 /* Quiet export pill — same treatment as Agent Analytics' "Export 48,231 events". */
 const EXPORT_PILL: React.CSSProperties = {
@@ -147,7 +151,8 @@ function SavedActions({ data }: { data: ActionsScreen }) {
 }
 
 export default async function ActionsPage() {
-  const [metrics, saved] = await Promise.all([getLiveMetrics(), listActions(WORKSPACE).catch(() => [])]);
+  const wsId = await currentWorkspaceId();
+  const [metrics, saved] = await Promise.all([getLiveMetrics(wsId), listActions(wsId).catch(() => [])]);
   const data = actionsScreen(
     metrics,
     saved.map((a) => ({ id: a.id, title: a.title, impact: a.impact, effort: a.effort, status: a.status, createdAt: a.createdAt })),

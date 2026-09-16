@@ -3,6 +3,7 @@ import type { AnswerProvider } from "@/lib/providers/types";
 import { answerStore, type PromptRun, type SampledAnswer } from "./store";
 import { listPrompts } from "@/lib/db/entities";
 import { getWorkspace } from "@/lib/workspace";
+import { currentWorkspaceId } from "@/lib/tenant";
 
 /* The nightly sampler — the core of "the engine". Given a set of prompts, it
    runs each configured provider against each prompt, normalizes the answers +
@@ -36,12 +37,20 @@ export interface RunSamplerOptions {
   /** cap concurrent provider calls per prompt (default: all in parallel) */
   timeoutMs?: number;
   now?: number;
+  /**
+   * Whose prompts to sample and whose answer store to write to. The sampler is
+   * background work with no request behind it, so a cron or script MUST pass
+   * this; the fallback only makes sense when a request is in scope.
+   */
+  workspaceId?: string;
 }
 
 export async function runSampler(opts: RunSamplerOptions = {}): Promise<SamplerReport> {
   const startedAt = opts.now ?? Date.now();
   const providers = configuredProviders();
-  const store = answerStore();
+  // Resolve the tenant once; the prompt set and the answer store share this id.
+  const workspaceId = opts.workspaceId ?? (await currentWorkspaceId());
+  const store = answerStore(workspaceId);
   const base: Omit<SamplerReport, "ok" | "reason"> = {
     startedAt,
     finishedAt: startedAt,
@@ -62,11 +71,11 @@ export async function runSampler(opts: RunSamplerOptions = {}): Promise<SamplerR
   // sampler does nothing: it must never invent a brand to track.
   let prompts = opts.prompts?.length ? opts.prompts : [];
   if (prompts.length === 0) {
-    const ws = await getWorkspace().catch(() => null);
+    const ws = await getWorkspace(workspaceId).catch(() => null);
     if (ws?.prompts.length) {
       prompts = ws.prompts;
     } else {
-      const tracked = await listPrompts(ws?.id ?? "active").catch(() => []);
+      const tracked = await listPrompts(workspaceId).catch(() => []);
       prompts = tracked.map((p) => p.text);
     }
   }

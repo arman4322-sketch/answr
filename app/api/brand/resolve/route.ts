@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
 import { getWorkspace, saveWorkspace, identityOf } from "@/lib/workspace";
 import { resolveIdentity, identitySummary } from "@/lib/brand/identity";
 import { observedConflicts, runEntityVerification, brandMatcher, clearEntityVerdicts } from "@/lib/live/entity";
 import { answerStore } from "@/lib/sampler/store";
+import { authorizedTenant, currentWorkspaceId, isWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* Re-resolve the tracked brand's identity, then re-check the answers already
    collected against it.
@@ -19,7 +18,13 @@ import { answerStore } from "@/lib/sampler/store";
  *   3. Re-runs entity verification, so the stored answers are re-judged
  *      against the new profile and every dashboard updates.
  *
- * Auth: the dashboard cookie, or the cron/ingest secret. */
+ * Auth: the dashboard cookie, or the cron/ingest secret.
+ *
+ * Tenancy: a cookie-authenticated call is a real request and resolves its own
+ * workspace — an account's, or the demo's for a passphrase visitor. A
+ * secret-authenticated call is a script or a cron with no session at all, so
+ * there is nothing to resolve: it acts on the DEMO workspace unless the caller
+ * names another one as `?workspaceId=`, validated with isWorkspaceId. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,21 +37,38 @@ function presented(req: Request): string | undefined {
   const m = (req.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i);
   return (m?.[1] ?? req.headers.get("x-cron-secret") ?? "").trim() || undefined;
 }
-async function authorized(req: Request): Promise<boolean> {
-  const jar = await cookies();
-  if (isUnlocked(jar.get(GATE_COOKIE)?.value)) return true;
+type Via = "cookie" | "secret";
+
+async function authorized(req: Request): Promise<Via | null> {
+  // An account session counts on its own merit. Checking the shared demo gate
+  // cookie by hand used to be the ONLY cookie path here, which meant a
+  // signed-in account could not use this endpoint at all once signup stopped
+  // granting demo access.
+  if (await authorizedTenant()) return "cookie";
   const s = secret();
-  return !!s && presented(req) === s;
+  return !!s && presented(req) === s ? "secret" : null;
+}
+
+/** The workspace this call acts on. See the Tenancy note above. */
+async function workspaceFor(req: Request, via: Via): Promise<string> {
+  if (via === "cookie") return currentWorkspaceId();
+  const named = new URL(req.url).searchParams.get("workspaceId");
+  return isWorkspaceId(named) ? named : DEMO_WORKSPACE_ID;
 }
 
 export async function GET(req: Request) {
-  if (!(await authorized(req))) {
+  const via = await authorized(req);
+  if (!via) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
-  const ws = await getWorkspace();
+  const workspaceId = await workspaceFor(req, via);
+  const ws = await getWorkspace(workspaceId);
   if (!ws) return NextResponse.json({ ok: false, error: "No workspace configured." }, { status: 400 });
   const identity = identityOf(ws);
-  const [observed, audit] = await Promise.all([observedConflicts(identity), auditMentions(identity)]);
+  const [observed, audit] = await Promise.all([
+    observedConflicts(identity, workspaceId),
+    auditMentions(identity, workspaceId),
+  ]);
   return NextResponse.json({
     ok: true,
     identity,
@@ -58,9 +80,9 @@ export async function GET(req: Request) {
 
 /** Every answer whose text contains the brand name, and the call made on it —
  *  the receipt behind "16 answers named Answr but meant someone else". */
-async function auditMentions(identity: Awaited<ReturnType<typeof identityOf>>) {
-  const isBrand = await brandMatcher(identity);
-  const runs = await answerStore().recentRuns(500);
+async function auditMentions(identity: Awaited<ReturnType<typeof identityOf>>, workspaceId: string) {
+  const isBrand = await brandMatcher(identity, workspaceId);
+  const runs = await answerStore(workspaceId).recentRuns(500);
   const esc = identity.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const named = new RegExp(`\\b${esc}\\b`, "i");
 
@@ -91,10 +113,13 @@ async function auditMentions(identity: Awaited<ReturnType<typeof identityOf>>) {
 }
 
 export async function POST(req: Request) {
-  if (!(await authorized(req))) {
+  const via = await authorized(req);
+  if (!via) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
-  const ws = await getWorkspace();
+  // Resolve the tenant once; every read and write below uses this id.
+  const workspaceId = await workspaceFor(req, via);
+  const ws = await getWorkspace(workspaceId);
   if (!ws) return NextResponse.json({ ok: false, error: "No workspace configured." }, { status: 400 });
   if (!ws.domain) {
     return NextResponse.json(
@@ -104,7 +129,7 @@ export async function POST(req: Request) {
   }
 
   const before = identityOf(ws);
-  const observed = await observedConflicts(before);
+  const observed = await observedConflicts(before, workspaceId);
 
   const identity = await resolveIdentity({
     name: ws.brand,
@@ -120,12 +145,13 @@ export async function POST(req: Request) {
     competitors: ws.competitors,
     prompts: ws.prompts,
     identity,
+    workspaceId,
   });
 
   // Verdicts were judgements about the OLD profile; they say nothing about the
   // new one. Discard them, then re-judge every stored answer from scratch.
-  const discarded = await clearEntityVerdicts();
-  const verification = await runEntityVerification();
+  const discarded = await clearEntityVerdicts(workspaceId);
+  const verification = await runEntityVerification({ workspaceId });
 
   return NextResponse.json({
     ok: true,
@@ -136,7 +162,7 @@ export async function POST(req: Request) {
     wasAmbiguous: before.ambiguous,
     discardedVerdicts: discarded,
     verification,
-    audit: await auditMentions(identity),
+    audit: await auditMentions(identity, workspaceId),
     workspace: saved,
   });
 }

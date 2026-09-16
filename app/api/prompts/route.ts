@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { authorizedTenant } from "@/lib/tenant";
 import { addPrompt, listPrompts } from "@/lib/db/entities";
 import { db } from "@/lib/db";
 
 /* Tracked-prompt write path. Persists prompts a user adds (durable once KV is
-   set) and feeds them to the sampler (lib/sampler/run reads these). Gated behind
-   the demo access cookie. Without real auth yet, everything is scoped to a single
-   "demo" workspace; real per-user workspace scoping arrives with lib/auth. */
+   set) and feeds them to the sampler (lib/sampler/run + lib/sampler/job read
+   these through listPrompts(workspaceId)).
+
+   Tenancy: every read and write is scoped to the CALLER'S workspace, resolved
+   once per request by lib/tenant. This route used to hardcode a single "demo"
+   bucket, which meant one account's prompt text was readable by every other
+   account — and, because the sampler reads `listPrompts(workspaceId)` with the
+   real id, prompts added here were never sampled for anyone. Both follow from
+   the same constant, and both are fixed by resolving the tenant instead.
+
+   An unidentified caller gets 401, not the demo workspace. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const WORKSPACE = "demo";
-
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  const tenant = await authorizedTenant();
+  if (!tenant) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
   let texts: string[] = [];
@@ -32,16 +37,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "No prompts provided." }, { status: 400 });
   }
   const added = [];
-  for (const t of texts) added.push(await addPrompt(WORKSPACE, t.slice(0, 400)));
-  const total = (await listPrompts(WORKSPACE)).length;
+  for (const t of texts) added.push(await addPrompt(tenant.workspaceId, t.slice(0, 400)));
+  const total = (await listPrompts(tenant.workspaceId)).length;
   return NextResponse.json({ ok: true, added: added.length, total, durable: db().durable });
 }
 
 export async function GET() {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  const tenant = await authorizedTenant();
+  if (!tenant) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
-  const prompts = await listPrompts(WORKSPACE);
+  const prompts = await listPrompts(tenant.workspaceId);
   return NextResponse.json({ ok: true, count: prompts.length, prompts, durable: db().durable });
 }

@@ -189,10 +189,10 @@ export default function CommandK() {
   }, [failed, metrics]);
 
   const actions = useMemo(() => {
-    const all = [
-      { key: "export-citations", label: exportLabel, group: "Citations" },
-      { key: "whats-new", label: "What's new", group: "Answr" },
-    ];
+    /* "What's new" removed with the panel it opened: that panel listed three
+       invented releases with invented dates, and the repo has no changelog data
+       source to drive a real one, so the panel was removed rather than faked. */
+    const all = [{ key: "export-citations", label: exportLabel, group: "Citations" }];
     const query = q.trim().toLowerCase();
     return all.filter((a) => !query || a.label.toLowerCase().includes(query) || a.group.toLowerCase().includes(query));
   }, [exportLabel, q]);
@@ -248,10 +248,6 @@ export default function CommandK() {
 
   const runAction = (key: string) => {
     if (key === "export-citations") return exportCitations();
-    if (key === "whats-new") {
-      close();
-      window.dispatchEvent(new CustomEvent("answr:whatsnew"));
-    }
   };
 
   const rowBtn: React.CSSProperties = {

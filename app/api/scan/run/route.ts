@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
 import { answerProviders } from "@/lib/providers/registry";
 import { scoreRuns } from "@/lib/scoring";
 import type { PromptRun, SampledAnswer } from "@/lib/sampler/store";
 import { resolveIdentity, domainIdentity, identitySummary, hostOf } from "@/lib/brand/identity";
 import { mentionsBrand } from "@/lib/brand/match";
 import { getWorkspace } from "@/lib/workspace";
+import { authorizedTenant } from "@/lib/tenant";
 
 /* Live scan — the real-numbers demo endpoint. Given a brand + competitors, it
    queries the connected LLM(s) live for a set of prompts, then runs the real
@@ -14,8 +13,9 @@ import { getWorkspace } from "@/lib/workspace";
    share-of-voice / position metrics computed from live model output.
 
    Free-tier Gemini can't ground (no citations), so we call without grounding;
-   the core visibility metrics don't need it. Gated behind the demo cookie so
-   the API key isn't burned by anonymous traffic.
+   the core visibility metrics don't need it. Requires an identified caller —
+   an account session or the demo passphrase — so the API key is not burned by
+   anonymous traffic.
 
    Like the dashboard, this counts mentions of the ENTITY, not of the name. A
    scan given a website resolves that brand's identity first, so scanning a
@@ -49,8 +49,10 @@ function defaultPrompts(brand: string, category: string): string[] {
 }
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  // Any identified caller: an account session, or the shared demo passphrase.
+  // This used to check the demo gate cookie alone, so a signed-in account could
+  // not run a scan once signup stopped granting demo access.
+  if (!(await authorizedTenant())) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
   const providers = answerProviders();

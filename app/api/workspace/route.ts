@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { authorizedTenant, isWritableWorkspaceId } from "@/lib/tenant";
 import { getWorkspace, saveWorkspace, defaultPromptsFor, identityOf } from "@/lib/workspace";
 import { resolveIdentity, hostOf, identitySummary, type BrandIdentity } from "@/lib/brand/identity";
 
@@ -11,7 +10,16 @@ import { resolveIdentity, hostOf, identitySummary, type BrandIdentity } from "@/
    Saving resolves the brand's identity from the name AND the website, because
    the name on its own does not identify a company: tracking "Answr" by name
    alone counted answers about an unrelated hair-care brand. The resolved
-   profile is what every metric matches against from then on. */
+   profile is what every metric matches against from then on.
+
+   Authorization: BOTH verbs require an identified caller. GET used to have
+   none at all, so an anonymous request published the workspace's whole brand
+   configuration — name, website, category, competitor list and the resolved
+   identity with its conflicts — to anybody who asked for it. It now resolves
+   the tenant exactly as POST does and answers only for that tenant's own
+   workspace. The only caller is app/(dash)/app/scan/ScanRunner, a client
+   component inside the gated dashboard whose same-origin fetch carries the
+   cookies, so seeding the scan form is unaffected. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +28,11 @@ export const maxDuration = 60;
 const cap = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(0, n) : "");
 
 export async function GET() {
-  const ws = await getWorkspace();
+  const tenant = await authorizedTenant();
+  if (!tenant) {
+    return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
+  }
+  const ws = await getWorkspace(tenant.workspaceId);
   return NextResponse.json({
     ok: true,
     configured: !!ws,
@@ -31,10 +43,17 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  const tenant = await authorizedTenant();
+  /* A caller whose session no longer resolves lands on the reserved dataless
+     id (lib/tenant NO_WORKSPACE_ID). That id must stay empty — it is what makes
+     unresolved requests render "not set up yet" instead of another brand — so
+     a write from one is refused rather than silently creating a shared record
+     there. Before tenancy this same request would have overwritten the demo
+     workspace's brand outright. */
+  if (!tenant || !isWritableWorkspaceId(tenant.workspaceId)) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
+  const workspaceId = tenant.workspaceId;
 
   let body: Record<string, unknown>;
   try {
@@ -54,7 +73,7 @@ export async function POST(req: Request) {
   // back, keep the stored one while it still describes this brand + domain, and
   // otherwise resolve it now. Skipped entirely when no website was given —
   // there is nothing to disambiguate against.
-  const existing = await getWorkspace();
+  const existing = await getWorkspace(workspaceId);
   const passed = parseIdentity(body.identity);
   let identity: BrandIdentity | undefined = passed;
 
@@ -72,7 +91,7 @@ export async function POST(req: Request) {
     ? body.prompts.map((p) => cap(p, 300)).filter(Boolean).slice(0, 25)
     : defaultPromptsFor(brand, category, { domain, ambiguous: identity?.ambiguous });
 
-  const ws = await saveWorkspace({ brand, domain, category, competitors, prompts, identity });
+  const ws = await saveWorkspace({ brand, domain, category, competitors, prompts, identity, workspaceId });
   return NextResponse.json({
     ok: true,
     workspace: ws,

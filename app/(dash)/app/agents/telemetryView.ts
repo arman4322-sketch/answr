@@ -1,6 +1,7 @@
 import type { TrendSeries } from "@/components/app/charts/TrendChart";
 import { getLiveMetrics, type LiveMetrics } from "@/lib/live/metrics";
-import { telemetry, type CrawlerEvent, type ReferralEvent } from "@/lib/telemetry";
+import { telemetry, MemoryStore, type CrawlerEvent, type ReferralEvent } from "@/lib/telemetry";
+import { currentWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* Agent Analytics — the screen's one read of REAL first-party telemetry.
 
@@ -120,8 +121,19 @@ function dailyCounts(dayKeys: string[], events: { ts: number }[]): number[] {
 }
 
 /** One read: live metrics for the headline, captured events for the detail. */
-export async function getAgentsView(): Promise<AgentsView> {
-  const [metrics, snap] = await Promise.all([getLiveMetrics(), telemetry.snapshot()]);
+export async function getAgentsView(workspaceId?: string): Promise<AgentsView> {
+  // Resolve the tenant once and hand it to the metrics layer, so the headline
+  // figures and the event detail below describe the same workspace.
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  const [metrics, snap] = await Promise.all([
+    getLiveMetrics(wsId),
+    // Crawler/referral events are deployment-wide, not workspace-scoped: they
+    // describe requests made to THIS site and carry no workspace of their own
+    // (see the note in lib/live/metrics). Only the demo — the workspace that
+    // traffic actually belongs to — reads them; any other workspace sees the
+    // nothing it has captured rather than somebody else's traffic.
+    wsId === DEMO_WORKSPACE_ID ? telemetry.snapshot() : new MemoryStore().snapshot(),
+  ]);
 
   const crawlerEvents = [...snap.crawlers].sort((a, b) => b.ts - a.ts);
   const referralEvents = [...snap.referrals].sort((a, b) => b.ts - a.ts);

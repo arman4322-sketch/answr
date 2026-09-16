@@ -1,5 +1,6 @@
 import { db, newId } from "@/lib/db";
 import { domainIdentity, hostOf, type BrandIdentity } from "@/lib/brand/identity";
+import { currentWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* The active workspace — the brand this deployment tracks.
 
@@ -28,14 +29,23 @@ export interface Workspace {
 }
 
 const COLLECTION = "workspace";
-const ACTIVE_ID = "active";
 
-/** The configured workspace, or null when the platform hasn't been set up. */
-export async function getWorkspace(): Promise<Workspace | null> {
-  return db().get<Workspace>(COLLECTION, ACTIVE_ID);
+/** The demo workspace's record id — what everything used before tenancy. */
+const ACTIVE_ID = DEMO_WORKSPACE_ID;
+
+/**
+ * The caller's workspace, or null when it hasn't been set up.
+ *
+ * With no id it resolves the one belonging to this request: a signed-in
+ * account's own, or the demo workspace for a passphrase visitor. Background
+ * work has no request, so it passes an id.
+ */
+export async function getWorkspace(workspaceId?: string): Promise<Workspace | null> {
+  const id = workspaceId ?? (await currentWorkspaceId());
+  return db().get<Workspace>(COLLECTION, id);
 }
 
-/** Create or update the active workspace. */
+/** Create or update a workspace. Defaults to the caller's own. */
 export async function saveWorkspace(input: {
   brand: string;
   domain?: string;
@@ -43,8 +53,10 @@ export async function saveWorkspace(input: {
   competitors?: string[];
   prompts?: string[];
   identity?: BrandIdentity;
+  workspaceId?: string;
 }): Promise<Workspace> {
-  const existing = await getWorkspace();
+  const id = input.workspaceId ?? (await currentWorkspaceId());
+  const existing = await getWorkspace(id);
   const now = Date.now();
   const domain = (input.domain ?? existing?.domain ?? "").trim();
   const brand = input.brand.trim();
@@ -60,7 +72,7 @@ export async function saveWorkspace(input: {
       : undefined);
 
   const ws: Workspace = {
-    id: ACTIVE_ID,
+    id,
     brand,
     domain,
     category: (input.category ?? existing?.category ?? "").trim(),

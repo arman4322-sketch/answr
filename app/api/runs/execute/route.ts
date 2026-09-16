@@ -3,6 +3,7 @@ import { runSampler } from "@/lib/sampler/run";
 import { runEntityVerification } from "@/lib/live/entity";
 import { runClassification } from "@/lib/live/classify";
 import { anyProviderConfigured, providerStatuses } from "@/lib/providers/registry";
+import { isWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 
 /* Sampler trigger — the endpoint Vercel Cron (or a manual call) hits to run the
    nightly answer sample. See lib/sampler/run.ts and vercel.json.
@@ -22,7 +23,15 @@ import { anyProviderConfigured, providerStatuses } from "@/lib/providers/registr
    configured AND presented. Set CRON_SECRET (Vercel Cron sends it automatically
    as `Authorization: Bearer <CRON_SECRET>`); ANSWR_INGEST_SECRET is accepted as
    a fallback for manual calls. With no secret set, it never samples — it just
-   reports readiness, so scheduling it on a fresh deployment is harmless. */
+   reports readiness, so scheduling it on a fresh deployment is harmless.
+
+   Tenancy: this route is authenticated by the SECRET, never by a cookie, so
+   there is no session to resolve a workspace from — Vercel Cron issues a bare
+   GET. It therefore samples the DEMO workspace explicitly, which is the tracked
+   showcase the nightly schedule exists for. An operator holding the secret can
+   point a manual call at another tenant with `?workspaceId=`, validated with
+   isWorkspaceId. It is never inferred: an unattended job must not guess whose
+   provider credits it is about to spend. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,15 +67,19 @@ async function handle(req: Request) {
     return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
 
-  const report = await runSampler();
-  if (!report.ok) return NextResponse.json(report);
+  // Resolve the tenant once; all three stages operate on the SAME workspace.
+  const named = new URL(req.url).searchParams.get("workspaceId");
+  const workspaceId = isWorkspaceId(named) ? named : DEMO_WORKSPACE_ID;
+
+  const report = await runSampler({ workspaceId });
+  if (!report.ok) return NextResponse.json({ ...report, workspaceId });
 
   // Enrich what was just collected. Failures here must not lose the sample, so
   // each stage is reported separately rather than allowed to throw.
-  const entity = await runEntityVerification().catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
-  const classified = await runClassification().catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+  const entity = await runEntityVerification({ workspaceId }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
+  const classified = await runClassification({ workspaceId }).catch((e) => ({ ok: false, error: String(e?.message ?? e) }));
 
-  return NextResponse.json({ ...report, entity, classified });
+  return NextResponse.json({ ...report, workspaceId, entity, classified });
 }
 
 // Vercel Cron issues GET; manual triggers may POST.

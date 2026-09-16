@@ -14,7 +14,7 @@
    Real auth is Phase 3 of READINESS.md and needs an identity provider. */
 
 export const GATE_COOKIE = "answr_demo_access";
-export const DEMO_EMAIL = "dana@nike.com";
+export const DEMO_EMAIL = process.env.DEMO_EMAIL || "demo@useanswr.com";
 
 /* Real-account session cookie name. Defined here (an edge-safe module with no
    node imports) so both the proxy and lib/auth can reference it without the

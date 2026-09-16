@@ -3,6 +3,7 @@ import { scoreRuns } from "@/lib/scoring";
 import { getWorkspace, identityOf } from "@/lib/workspace";
 import { brandMatcher } from "./entity";
 import { trackedRegions, listAudiences } from "@/lib/segments/catalog";
+import { currentWorkspaceId } from "@/lib/tenant";
 import type { SegmentKind } from "@/lib/segments/types";
 
 /* Segment metrics — visibility and share of voice sliced by where the question
@@ -72,18 +73,24 @@ const empty = (kind: SegmentKind, configured: boolean, pending: string[] = []): 
   lastRunAt: null,
 });
 
-export async function getSegmentMetrics(kind: SegmentKind, limit = 2000): Promise<SegmentMetrics> {
-  const [workspace, stored] = await Promise.all([getWorkspace(), answerStore().recentRuns(limit)]);
+export async function getSegmentMetrics(
+  kind: SegmentKind,
+  workspaceId?: string,
+  limit = 2000,
+): Promise<SegmentMetrics> {
+  // Resolve the tenant once; every read below uses this id.
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  const [workspace, stored] = await Promise.all([getWorkspace(wsId), answerStore(wsId).recentRuns(limit)]);
   if (!workspace) return empty(kind, false);
 
   const definitions =
     kind === "region"
-      ? (await trackedRegions()).map((r) => ({ id: r.id, label: r.label, persona: undefined, note: undefined }))
-      : (await listAudiences()).map((a) => ({ id: a.id, label: a.label, persona: a.persona, note: a.note }));
+      ? (await trackedRegions(wsId)).map((r) => ({ id: r.id, label: r.label, persona: undefined, note: undefined }))
+      : (await listAudiences(wsId)).map((a) => ({ id: a.id, label: a.label, persona: a.persona, note: a.note }));
 
   if (definitions.length === 0) return empty(kind, true);
 
-  const isBrand = await brandMatcher(identityOf(workspace));
+  const isBrand = await brandMatcher(identityOf(workspace), wsId);
   const scoreOpts = {
     brand: workspace.brand,
     brandDomain: workspace.domain,

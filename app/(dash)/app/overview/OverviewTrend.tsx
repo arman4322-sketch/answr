@@ -94,15 +94,15 @@ export default function OverviewTrend({
               !configured
                 ? "No history yet"
                 : !hasData
-                  ? "Collecting — first sample runs tonight"
+                  ? "No sample has run yet"
                   : `Collecting history — ${historyNote(days)}`
             }
             body={
               !configured
-                ? "Set up your brand and the nightly sampler starts building this chart, one point per day."
+                ? "Set up your brand, then start a run from Settings › Platforms — this chart adds one point for every day the sampler runs."
                 : !hasData
-                  ? "Nothing has been sampled yet. The chart draws its first line once two days of runs exist."
-                  : "A trend needs at least two sampled days. Today's numbers are on the cards above; this line appears after tomorrow's run."
+                  ? "Nothing has been sampled yet — start the first run from Settings › Platforms. The chart draws its first line once two days of runs exist."
+                  : "A trend needs at least two sampled days. Today's numbers are on the cards above; this line appears after the next run."
             }
           />
         </div>

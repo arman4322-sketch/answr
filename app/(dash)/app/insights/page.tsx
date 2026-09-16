@@ -6,6 +6,7 @@ import LockedPreview from "@/components/app/LockedPreview";
 import { capabilitySource } from "@/lib/preview/sources";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { getEnrichedMetrics } from "@/lib/live/enriched";
+import { currentWorkspaceId } from "@/lib/tenant";
 import TopicsLive from "./TopicsLive";
 import InsightsTabs from "./InsightsTabs";
 import TopicsPreview from "./TopicsPreview";
@@ -70,7 +71,9 @@ function CardNote({ title, body }: { title: string; body: string }) {
 }
 
 export default async function Page() {
-  const [m, e] = await Promise.all([getLiveMetrics(), getEnrichedMetrics()]);
+  // Resolve the tenant once so both reads describe the same workspace.
+  const wsId = await currentWorkspaceId();
+  const [m, e] = await Promise.all([getLiveMetrics(wsId), getEnrichedMetrics(wsId)]);
   const topicsSource = capabilitySource("topics");
   const brand = m.workspace?.brand ?? "Your brand";
   const slug = (m.workspace?.brand ?? "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -110,7 +113,7 @@ export default async function Page() {
         exportReport={m.hasData ? topicsSpec(m) : undefined}
         actionNote={
           m.configured
-            ? "Nothing to export yet — the first sample runs tonight."
+            ? "Nothing to export yet — no sample has run. Start the first run from Settings › Platforms."
             : "Nothing to export yet — set up your brand to start collecting data."
         }
       />
@@ -157,8 +160,11 @@ export default async function Page() {
                 padding: "10px 14px",
               }}
             >
-              <span style={{ color: "var(--tx)", fontWeight: 500 }}>Collecting — first sample runs tonight.</span>{" "}
-              {`${brand} is configured with ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}. Nothing has been sampled yet, so this screen has no figures to show — not because visibility is zero.`}
+              <span style={{ color: "var(--tx)", fontWeight: 500 }}>No sample has run yet.</span>{" "}
+              {`${brand} is configured with ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}, but nothing has been sampled — so this screen has no figures to show, not because visibility is zero. `}
+              <Link href="/app/settings/platforms" style={{ color: "var(--ac)", fontWeight: 500 }}>
+                {"Start the first run from Settings › Platforms →"}
+              </Link>
             </div>
           )}
 
@@ -205,11 +211,11 @@ export default async function Page() {
               ) : (
                 <div style={{ marginTop: "14px" }}>
                   <CardNote
-                    title={m.hasData ? `Collecting history — ${historyNote(m.days)}` : "Collecting — first sample runs tonight"}
+                    title={m.hasData ? `Collecting history — ${historyNote(m.days)}` : "No sample has run yet"}
                     body={
                       m.hasData
                         ? `A trend needs at least two sampled days. Today's measured figures are beside this card; the line appears after the next run. Current visibility ${pct(m.visibilityScore)}, share of voice ${pct(m.shareOfVoice)}.`
-                        : "Nothing has been sampled yet. This chart draws its first line once two days of runs exist."
+                        : "Nothing has been sampled yet — start the first run from Settings › Platforms. This chart draws its first line once two days of runs exist."
                     }
                   />
                 </div>
@@ -229,8 +235,8 @@ export default async function Page() {
               {m.brands.length === 0 ? (
                 <div style={{ marginTop: "14px" }}>
                   <CardNote
-                    title="Collecting — first sample runs tonight"
-                    body="Your brand and its tracked competitors appear here with their measured mention counts as soon as the first answers land."
+                    title="No sample has run yet"
+                    body="Your brand and its tracked competitors appear here with their measured mention counts as soon as the first answers land. Start the first run from Settings › Platforms."
                   />
                 </div>
               ) : (
@@ -322,7 +328,7 @@ export default async function Page() {
             {m.platforms.length === 0 ? (
               <div style={{ marginTop: "16px" }}>
                 <CardNote
-                  title={m.hasData ? "No platform answers in the latest run" : "Collecting — first sample runs tonight"}
+                  title={m.hasData ? "No platform answers in the latest run" : "No sample has run yet"}
                   body="Each engine appears here as soon as it returns an answer for one of your tracked prompts. Platforms that have never answered are not listed rather than shown at zero."
                 />
               </div>

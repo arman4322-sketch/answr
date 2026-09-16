@@ -42,7 +42,7 @@ export function SetupNotice() {
 export function CollectingNotice({ prompts }: { prompts: number }) {
   return (
     <div style={panel}>
-      <div style={title}>Collecting — first sample runs tonight</div>
+      <div style={title}>No sample has run yet</div>
       <div style={body}>
         {prompts > 0
           ? `Your workspace is configured and ${prompts} prompt${prompts === 1 ? " is" : "s are"} queued. `
@@ -50,9 +50,12 @@ export function CollectingNotice({ prompts }: { prompts: number }) {
         No answers have been sampled yet, so there are no citations to count. Every figure below stays at zero until the
         first run lands — none of them are estimates.
       </div>
-      <Link href="/app/settings" style={link}>
-        Review the tracked prompt set →
+      <Link href="/app/settings/platforms" style={link}>
+        Start the first run from Settings › Platforms →
       </Link>
+      <span style={{ ...link, color: "var(--fnt)", marginLeft: "14px" }}>
+        or <Link href="/app/settings" style={{ color: "var(--ac)", textDecoration: "none" }}>review the tracked prompt set</Link>
+      </span>
     </div>
   );
 }

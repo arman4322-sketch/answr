@@ -7,6 +7,7 @@ import ReportCsvButton from "@/components/ui/ReportCsvButton";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { listActions } from "@/lib/db/entities";
 import { db } from "@/lib/db";
+import { currentWorkspaceId } from "@/lib/tenant";
 import NewActionButton from "../NewActionButton";
 import { CollectingNotice, NotAvailablePanel, SetupNotice } from "../Panels";
 import {
@@ -47,7 +48,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const WORKSPACE = "demo";
+/* Same tenant resolution as the queue screen: one id, used for both the live
+   metrics behind the gap and the caller's own saved actions. */
 
 const EXPORT_PILL: React.CSSProperties = {
   fontSize: "12px",
@@ -86,7 +88,8 @@ const backLink: React.CSSProperties = {
 
 export default async function ActionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [metrics, saved] = await Promise.all([getLiveMetrics(), listActions(WORKSPACE).catch(() => [])]);
+  const wsId = await currentWorkspaceId();
+  const [metrics, saved] = await Promise.all([getLiveMetrics(wsId), listActions(wsId).catch(() => [])]);
   const data = actionsScreen(
     metrics,
     saved.map((a) => ({ id: a.id, title: a.title, impact: a.impact, effort: a.effort, status: a.status, createdAt: a.createdAt })),

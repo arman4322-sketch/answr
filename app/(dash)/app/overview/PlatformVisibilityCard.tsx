@@ -30,7 +30,7 @@ export default function PlatformVisibilityCard({ m }: { m: LiveMetrics }) {
       {rows.length === 0 ? (
         <div style={{ marginTop: "16px" }}>
           <CardNote
-            title={m.configured ? "Collecting — first sample runs tonight" : "Not set up yet"}
+            title={m.configured ? "No sample has run yet" : "Not set up yet"}
             body={
               m.configured
                 ? "No platform has returned an answer yet. Each engine appears here as soon as it answers one of your tracked prompts."

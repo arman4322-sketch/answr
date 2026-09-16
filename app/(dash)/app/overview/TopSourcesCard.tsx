@@ -33,7 +33,7 @@ export default function TopSourcesCard({ m }: { m: LiveMetrics }) {
       {rows.length === 0 ? (
         <div style={{ marginTop: "15px" }}>
           <CardNote
-            title={m.configured ? (m.hasData ? "No citations captured yet" : "Collecting — first sample runs tonight") : "Not set up yet"}
+            title={m.configured ? (m.hasData ? "No citations captured yet" : "No sample has run yet") : "Not set up yet"}
             body={
               !m.configured
                 ? "Set up your brand to start collecting data — cited sources are parsed from the answers as they arrive."

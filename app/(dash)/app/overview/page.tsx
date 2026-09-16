@@ -73,7 +73,7 @@ export default async function Page() {
         exportReport={m.hasData ? overviewSpec(m) : undefined}
         actionNote={
           m.configured
-            ? "Nothing to export yet — the first sample runs tonight."
+            ? "Nothing to export yet — no sample has run. Start the first run from Settings › Platforms."
             : "Nothing to export yet — set up your brand to start collecting data."
         }
       />
@@ -119,8 +119,11 @@ export default async function Page() {
                 padding: "10px 14px",
               }}
             >
-              <span style={{ color: "var(--tx)", fontWeight: 500 }}>Collecting — first sample runs tonight.</span>{" "}
-              {`${brand} is configured with ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}. Every number below is zero because nothing has been sampled yet, not because visibility is zero.`}
+              <span style={{ color: "var(--tx)", fontWeight: 500 }}>No sample has run yet.</span>{" "}
+              {`${brand} is configured with ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}. Every number below is zero because nothing has been sampled yet, not because visibility is zero. `}
+              <Link href="/app/settings/platforms" style={{ color: "var(--ac)", fontWeight: 500 }}>
+                {"Start the first run from Settings › Platforms →"}
+              </Link>
             </div>
           )}
 

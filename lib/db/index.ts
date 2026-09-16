@@ -17,6 +17,35 @@ import { fileList, fileGet, filePut, fileRemove, fileStoreAvailable } from "./fi
    the scoring step (lib/scoring) fed by real sampler runs — but it gives auth,
    write paths, and lead capture somewhere real to persist. */
 
+/* Tenancy — which collections are per-workspace, and who namespaces them.
+ *
+ * The `Db` interface is deliberately tenant-agnostic: a collection is just a
+ * name, and the CALLER decides whether that name carries a workspace. Callers
+ * that own per-workspace data build the name with `scopeKey` from lib/tenant,
+ * which leaves the demo workspace on the unsuffixed name so everything written
+ * before tenancy stays exactly where it is:
+ *
+ *   scoped by the caller     "sentiment"        lib/live/classify
+ *                            "prompt_topics"    lib/live/classify
+ *                            "entity_verdicts"  lib/live/entity
+ *                            "segment_settings" lib/segments/catalog
+ *                            "audiences"        lib/segments/catalog
+ *
+ *   deliberately GLOBAL      "users", "sessions"  identity spans workspaces —
+ *                                                 scoping them would make login
+ *                                                 unresolvable
+ *                            "workspace"          the record id IS the
+ *                                                 workspace id, so the
+ *                                                 collection must stay shared
+ *                            "leads", "views"     marketing capture for the
+ *                                                 product itself, not a tenant's
+ *
+ *   row-filtered instead     "prompts", "actions" carry a `workspaceId` FIELD
+ *                                                 (lib/db/entities) and are
+ *                                                 filtered on read
+ *
+ * A new per-workspace collection goes through `scopeKey` at its call site. */
+
 export interface Db {
   kind: "memory" | "kv";
   durable: boolean;

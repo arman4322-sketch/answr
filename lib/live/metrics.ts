@@ -1,8 +1,9 @@
 import { answerStore, type PromptRun } from "@/lib/sampler/store";
 import { scoreRuns } from "@/lib/scoring";
 import { getWorkspace, identityOf, type Workspace } from "@/lib/workspace";
-import { summarize } from "@/lib/telemetry";
+import { summarize, MemoryStore, telemetry as telemetryStore } from "@/lib/telemetry";
 import { brandMatcher } from "@/lib/live/entity";
+import { currentWorkspaceId, DEMO_WORKSPACE_ID } from "@/lib/tenant";
 import type { BrandIdentity } from "@/lib/brand/identity";
 
 /* The live metrics layer — the single source every dashboard reads.
@@ -175,12 +176,42 @@ function emptyMetrics(workspace: Workspace | null, telemetry: Awaited<ReturnType
   };
 }
 
-/** Compute every dashboard metric from real sampled runs. */
-export async function getLiveMetrics(limit = 2000): Promise<LiveMetrics> {
+/* Crawler/referral telemetry is NOT workspace-scoped, and deliberately so: the
+   events describe requests made to THIS deployment (proxy.ts → /api/ingest) and
+   carry no workspace of their own, so there is no honest way to attribute them
+   to one tenant. The store therefore stays global — but a workspace that has no
+   capture wired up must not be shown another workspace's traffic, so anything
+   other than the demo reads an empty summary until ingest carries a tenant.
+   `durable` still reports the real store: that is a fact about the deployment. */
+async function telemetryFor(workspaceId: string) {
+  if (workspaceId === DEMO_WORKSPACE_ID) return summarize();
+  const none = await summarize(new MemoryStore());
+  return {
+    ...none,
+    // The counts are zero because nothing is attributed to this workspace, but
+    // the store itself is a fact about the deployment — report it truthfully.
+    store: {
+      kind: telemetryStore.kind,
+      label: telemetryStore.label,
+      durable: telemetryStore.durable,
+      degraded: null,
+    },
+  };
+}
+
+/**
+ * Compute every dashboard metric from real sampled runs.
+ *
+ * With no id it resolves the workspace this request belongs to. Background work
+ * (cron, scripts) has no request, so it passes one.
+ */
+export async function getLiveMetrics(workspaceId?: string, limit = 2000): Promise<LiveMetrics> {
+  // Resolve the tenant once; every read below uses this id.
+  const wsId = workspaceId ?? (await currentWorkspaceId());
   const [workspace, stored, telemetry] = await Promise.all([
-    getWorkspace(),
-    answerStore().recentRuns(limit),
-    Promise.resolve(summarize()),
+    getWorkspace(wsId),
+    answerStore(wsId).recentRuns(limit),
+    telemetryFor(wsId),
   ]);
 
   // Headline metrics are the OVERALL picture, so they exclude segmented runs.
@@ -198,7 +229,7 @@ export async function getLiveMetrics(limit = 2000): Promise<LiveMetrics> {
   // Every "does this answer mention the brand" question in this file goes
   // through one matcher, so the headline KPIs, the tables and the per-prompt
   // rows can never disagree about what counts.
-  const isBrand = await brandMatcher(identity);
+  const isBrand = await brandMatcher(identity, wsId);
 
   const scores = scoreRuns(runs, { brand, brandDomain: workspace.domain, competitors, brandMatch: isBrand });
 

@@ -2,6 +2,7 @@ import { answerStore, type PromptRun } from "@/lib/sampler/store";
 import { getWorkspace, identityOf } from "@/lib/workspace";
 import { listSentiment, listPromptTopics, type Sentiment } from "./classify";
 import { brandMatcher } from "./entity";
+import { currentWorkspaceId } from "@/lib/tenant";
 
 /* Enriched live metrics — sentiment and topic breakdowns computed from the
    classification pass (lib/live/classify) over answers Answr already sampled.
@@ -90,12 +91,14 @@ const emptySplit: SentimentSplit = {
   positivePct: 0, neutralPct: 0, negativePct: 0,
 };
 
-export async function getEnrichedMetrics(): Promise<EnrichedMetrics> {
+export async function getEnrichedMetrics(workspaceId?: string): Promise<EnrichedMetrics> {
+  // Resolve the tenant once; every read below uses this id.
+  const wsId = workspaceId ?? (await currentWorkspaceId());
   const [workspace, stored, sentiment, topics] = await Promise.all([
-    getWorkspace(),
-    answerStore().recentRuns(2000),
-    listSentiment(),
-    listPromptTopics(),
+    getWorkspace(wsId),
+    answerStore(wsId).recentRuns(2000),
+    listSentiment(wsId),
+    listPromptTopics(wsId),
   ]);
   // Topic visibility is the overall figure, so segmented runs stay out of it —
   // they are the same prompts asked deliberately differently.
@@ -117,7 +120,7 @@ export async function getEnrichedMetrics(): Promise<EnrichedMetrics> {
 
   // Topic visibility asks the same "did this answer name the brand" question as
   // every other metric, so it uses the same entity matcher.
-  const isBrand = await brandMatcher(identityOf(workspace));
+  const isBrand = await brandMatcher(identityOf(workspace), wsId);
 
   // ---------- sentiment ----------
   const hasSentiment = sentiment.length > 0;

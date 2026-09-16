@@ -4,19 +4,28 @@ import Topbar from "@/components/app/Topbar";
 import Hint from "@/components/ui/Hint";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { providerStatuses } from "@/lib/providers/registry";
-import { ToastButton, Toggle } from "../DemoControls";
+import { Toggle } from "../DemoControls";
 import SettingsRail from "../SettingsRail";
 import { EmptyState, brandLabel } from "../states";
+import RunNow from "./RunNow";
 
 /* Settings — Platforms.
 
    Which answer engines this deployment can sample, read from the provider
    registry against the real environment, and what each has actually returned,
-   read from the live metrics layer. The "412 prompts / day" figures, the
-   "5 OF 5 ENABLED" badge, the plan quota and the "next run in 6h 12m" countdown
-   were all fixture — the prompt count is now the tracked set, the connected
-   count is the real key state, and the schedule card reports the sampler
-   plumbing (cron secret, last run) instead of inventing a clock. */
+   read from the live metrics layer.
+
+   Nothing on this screen is invented. Every figure rendered is read back from
+   something the deployment actually holds: the prompt count is the tracked set
+   (lib/live/metrics), the connected count is the real key state (the provider
+   registry against process.env), the per-lane counts are answers already
+   sampled, and the schedule card reports the sampler plumbing — whether a cron
+   secret is set, and what the last run collected — rather than a countdown.
+   The daily-volume figures, the "enabled" badge, the plan quota and the
+   "next run in …" clock that used to sit here were fixture and are gone.
+
+   "Run now" is a real run: RunNow drives the stepped engine
+   (/api/runs/start → /api/runs/step) exactly as the welcome screen does. */
 
 export const metadata: Metadata = {
   title: "Platforms — Settings",
@@ -178,22 +187,7 @@ export default async function PlatformsSettingsPage() {
                 </div>
               </div>
               <div style={{ marginTop: "10px" }}>
-                <ToastButton
-                  note="Manual runs are triggered by the sampler endpoint, not from this screen."
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "500",
-                    color: "var(--mut)",
-                    border: "1px solid var(--brd)",
-                    borderRadius: "7px",
-                    padding: "8px 14px",
-                    background: "var(--bg2)",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  {"Run now"}
-                </ToastButton>
+                <RunNow connectedLanes={connected} promptsTracked={m.promptsTracked} />
               </div>
             </div>
           </div>

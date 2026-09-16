@@ -91,7 +91,7 @@ export default function AddPromptsModal({ data }: { data: PromptsScreen }) {
           `${body.added} prompt${body.added === 1 ? "" : "s"} saved — ${body.total} in the prompt store.` +
             (data.workspacePrompts > 0
               ? " Add them to the workspace prompt set in Settings › Brand to include them in the next run."
-              : " They run on the next scheduled sample.") +
+              : " They are included the next time a run is started.") +
             (body.durable ? "" : " Stored in memory until you add a KV key."),
         );
         setText("");
@@ -129,7 +129,7 @@ export default function AddPromptsModal({ data }: { data: PromptsScreen }) {
                 <div style={{fontSize:"15px",fontWeight:"600"}}>{"Add prompts"}</div>
                 <div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"4px",lineHeight:1.5}}>
                   {data.configured
-                    ? `${data.brand}${data.category ? ` · ${data.category}` : ""} · every prompt runs on the next scheduled sample`
+                    ? `${data.brand}${data.category ? ` · ${data.category}` : ""} · every prompt is included the next time a run is started`
                     : "No workspace configured yet — set up your brand in Settings › Brand so sampled prompts can be scored."}
                 </div>
               </div>

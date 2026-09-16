@@ -7,6 +7,7 @@ import AudiencesLive from "./AudiencesLive";
 import SegmentPassButton from "../SegmentPassButton";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { getSegmentMetrics } from "@/lib/live/segments";
+import { currentWorkspaceId } from "@/lib/tenant";
 import { capabilitySource } from "@/lib/preview/sources";
 
 export const metadata: Metadata = { title: "Audiences · Answer Engine Insights" };
@@ -37,7 +38,9 @@ export const dynamic = "force-dynamic";
 
    Export stays off: there is no report spec for this screen. */
 export default async function Page() {
-  const [m, seg] = await Promise.all([getLiveMetrics(), getSegmentMetrics("audience")]);
+  // Resolve the tenant once so both reads describe the same workspace.
+  const wsId = await currentWorkspaceId();
+  const [m, seg] = await Promise.all([getLiveMetrics(wsId), getSegmentMetrics("audience", wsId)]);
   const brand = m.workspace?.brand ?? "Your brand";
   const source = capabilitySource("audiences");
   const defined = seg.rows.length;

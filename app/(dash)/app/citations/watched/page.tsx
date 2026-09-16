@@ -15,7 +15,9 @@ import { fmtInt } from "@/lib/filters/windows";
    Neither table can be filled from the live engine, and both say so:
    - Watched URLs: lib/live/metrics aggregates citations by DOMAIN and keeps no
      per-URL history, so there is no page-level citation count or change to
-     print — and no watched-URL records exist to list.
+     print — and no watched-URL records exist to list. There is also no alerting
+     system anywhere in the product, so this screen promises no notifications;
+     both of its controls are rendered visibly disabled (./Controls).
    - Source gap: naming domains that cite the category but never this brand
      needs per-citation brand attribution, which the engine does not compute.
    What IS live — the domains actually cited and the owned/earned split — is on
@@ -61,8 +63,8 @@ export default async function WatchedUrlsPage() {
               <div style={head}>
                 <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
                   <span style={{fontSize:"13.5px",fontWeight:"600"}}>{"Watched URLs"}</span>
-                  <Hint text="Pages we watch and warn you about" />
-                  <span style={{fontSize:"11.5px",color:"var(--fnt)",marginLeft:"2px"}}>{"alerts when citation performance shifts"}</span>
+                  <Hint text="Individual pages you would track citations for" />
+                  <span style={{fontSize:"11.5px",color:"var(--fnt)",marginLeft:"2px"}}>{"per-page citation counts — not available from the sampled data"}</span>
                 </div>
                 <WatchUrlButton />
               </div>

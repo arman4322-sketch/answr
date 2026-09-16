@@ -5,6 +5,7 @@ import InsightsTabs from "../InsightsTabs";
 import PreviewLayout from "./PreviewLayout";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { getEnrichedMetrics } from "@/lib/live/enriched";
+import { currentWorkspaceId } from "@/lib/tenant";
 import SentimentLive from "./SentimentLive";
 import { capabilitySource } from "@/lib/preview/sources";
 import { sentimentSpec } from "../reports";
@@ -33,7 +34,9 @@ export const dynamic = "force-dynamic";
    sub-nav and the route are unchanged; Export still downloads the not-collected
    report (../reports.ts). */
 export default async function Page() {
-  const [m, e] = await Promise.all([getLiveMetrics(), getEnrichedMetrics()]);
+  // Resolve the tenant once so both reads describe the same workspace.
+  const wsId = await currentWorkspaceId();
+  const [m, e] = await Promise.all([getLiveMetrics(wsId), getEnrichedMetrics(wsId)]);
   const brand = m.workspace?.brand ?? "Your brand";
   const slug = (m.workspace?.brand ?? "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
   const source = capabilitySource("sentiment");

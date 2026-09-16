@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { pickProvider } from "@/lib/providers/registry";
 import { getWorkspace } from "@/lib/workspace";
+import { currentWorkspaceId, scopeKey } from "@/lib/tenant";
 import type { AudienceSegment, RegionSegment } from "./types";
 
 /* What gets tracked, and where it is stored.
@@ -37,7 +38,10 @@ export const REGION_CATALOG: RegionSegment[] = [
 /** Tracked out of the box: the largest English-speaking answer-engine markets. */
 const DEFAULT_REGION_IDS = ["us", "gb", "ca", "au"];
 
-const SETTINGS = "segment_settings";
+/* Which regions and which audiences a workspace tracks are that workspace's own
+ * preferences, so both collections are namespaced by workspace. The demo keeps
+ * the unsuffixed names (lib/tenant scopeKey). */
+const settingsCollection = (workspaceId: string) => scopeKey("segment_settings", workspaceId);
 const REGION_SETTING_ID = "regions";
 
 interface TrackedRegions {
@@ -50,43 +54,54 @@ export function regionById(id: string): RegionSegment | undefined {
   return REGION_CATALOG.find((r) => r.id === id);
 }
 
-/** The regions this deployment tracks. */
-export async function trackedRegions(): Promise<RegionSegment[]> {
-  const saved = await db().get<TrackedRegions>(SETTINGS, REGION_SETTING_ID).catch(() => null);
+/** The regions this workspace tracks. */
+export async function trackedRegions(workspaceId?: string): Promise<RegionSegment[]> {
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  const saved = await db().get<TrackedRegions>(settingsCollection(wsId), REGION_SETTING_ID).catch(() => null);
   const ids = saved?.ids?.length ? saved.ids : DEFAULT_REGION_IDS;
   return ids.map(regionById).filter((r): r is RegionSegment => !!r);
 }
 
-export async function saveTrackedRegions(ids: string[]): Promise<RegionSegment[]> {
+export async function saveTrackedRegions(ids: string[], workspaceId?: string): Promise<RegionSegment[]> {
+  const wsId = workspaceId ?? (await currentWorkspaceId());
   const valid = [...new Set(ids)].filter((id) => !!regionById(id)).slice(0, 12);
-  await db().put<TrackedRegions>(SETTINGS, { id: REGION_SETTING_ID, ids: valid, updatedAt: Date.now() });
-  return trackedRegions();
+  await db().put<TrackedRegions>(settingsCollection(wsId), {
+    id: REGION_SETTING_ID,
+    ids: valid,
+    updatedAt: Date.now(),
+  });
+  return trackedRegions(wsId);
 }
 
 /* ------------------------------------------------------------------ */
 /* audiences                                                           */
 /* ------------------------------------------------------------------ */
 
-const AUDIENCES = "audiences";
+const audiencesCollection = (workspaceId: string) => scopeKey("audiences", workspaceId);
 
 interface StoredAudience extends AudienceSegment {
   createdAt: number;
 }
 
-export async function listAudiences(): Promise<AudienceSegment[]> {
-  const rows = await db().list<StoredAudience>(AUDIENCES).catch(() => []);
+export async function listAudiences(workspaceId?: string): Promise<AudienceSegment[]> {
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  const rows = await db().list<StoredAudience>(audiencesCollection(wsId)).catch(() => []);
   return rows
     .sort((a, b) => a.createdAt - b.createdAt)
     .map(({ kind, id, label, persona, note }) => ({ kind, id, label, persona, note }));
 }
 
-export async function saveAudiences(list: Omit<AudienceSegment, "kind">[]): Promise<AudienceSegment[]> {
+export async function saveAudiences(
+  list: Omit<AudienceSegment, "kind">[],
+  workspaceId?: string,
+): Promise<AudienceSegment[]> {
+  const wsId = workspaceId ?? (await currentWorkspaceId());
   const now = Date.now();
   let i = 0;
   for (const a of list.slice(0, 8)) {
     const id = slug(a.id || a.label);
     if (!id || !a.label || !a.persona) continue;
-    await db().put<StoredAudience>(AUDIENCES, {
+    await db().put<StoredAudience>(audiencesCollection(wsId), {
       kind: "audience",
       id,
       label: a.label.slice(0, 60),
@@ -95,11 +110,12 @@ export async function saveAudiences(list: Omit<AudienceSegment, "kind">[]): Prom
       createdAt: now + i++,
     });
   }
-  return listAudiences();
+  return listAudiences(wsId);
 }
 
-export async function clearAudiences(): Promise<void> {
-  for (const a of await listAudiences()) await db().remove(AUDIENCES, a.id);
+export async function clearAudiences(workspaceId?: string): Promise<void> {
+  const wsId = workspaceId ?? (await currentWorkspaceId());
+  for (const a of await listAudiences(wsId)) await db().remove(audiencesCollection(wsId), a.id);
 }
 
 function slug(s: string): string {
@@ -127,8 +143,8 @@ function firstJson<T>(text: string): T | null {
  * of the category. Returns [] when there is nothing to base them on — an empty
  * Audiences screen is better than four invented personas.
  */
-export async function suggestAudiences(): Promise<AudienceSegment[]> {
-  const ws = await getWorkspace();
+export async function suggestAudiences(workspaceId?: string): Promise<AudienceSegment[]> {
+  const ws = await getWorkspace(workspaceId ?? (await currentWorkspaceId()));
   const provider = pickProvider();
   if (!ws || !provider) return [];
 

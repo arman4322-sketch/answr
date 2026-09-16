@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
+import { authorizedTenant } from "@/lib/tenant";
 import { createAction, listActions } from "@/lib/db/entities";
 import { db } from "@/lib/db";
 
-/* Action-item write path. Persists actions created from prompts/insights (durable
-   once KV is set). Gated behind the demo access cookie; single "demo" workspace
-   until real auth lands. */
+/* Action-item write path. Persists actions created from prompts/insights
+   (durable once KV is set).
+
+   Tenancy: scoped to the CALLER'S workspace, resolved once per request by
+   lib/tenant. The previous hardcoded "demo" bucket put every account's saved
+   actions — their titles, their own impact and effort notes — into one list
+   that every other account read back.
+
+   An unidentified caller gets 401, not the demo workspace. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const WORKSPACE = "demo";
-
 export async function POST(req: Request) {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  const tenant = await authorizedTenant();
+  if (!tenant) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
   let title = "";
@@ -31,16 +34,16 @@ export async function POST(req: Request) {
   }
   if (!title) return NextResponse.json({ ok: false, error: "A title is required." }, { status: 400 });
 
-  const action = await createAction(WORKSPACE, { title, impact, effort });
-  const total = (await listActions(WORKSPACE)).length;
+  const action = await createAction(tenant.workspaceId, { title, impact, effort });
+  const total = (await listActions(tenant.workspaceId)).length;
   return NextResponse.json({ ok: true, id: action.id, total, durable: db().durable });
 }
 
 export async function GET() {
-  const jar = await cookies();
-  if (!isUnlocked(jar.get(GATE_COOKIE)?.value)) {
+  const tenant = await authorizedTenant();
+  if (!tenant) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
-  const actions = await listActions(WORKSPACE);
+  const actions = await listActions(tenant.workspaceId);
   return NextResponse.json({ ok: true, count: actions.length, actions, durable: db().durable });
 }

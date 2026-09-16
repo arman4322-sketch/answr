@@ -7,6 +7,7 @@ import RegionsLive from "./RegionsLive";
 import SegmentPassButton from "../SegmentPassButton";
 import { getLiveMetrics } from "@/lib/live/metrics";
 import { getSegmentMetrics } from "@/lib/live/segments";
+import { currentWorkspaceId } from "@/lib/tenant";
 import { capabilitySource } from "@/lib/preview/sources";
 import { regionsSpec } from "../reports";
 
@@ -41,7 +42,9 @@ export const dynamic = "force-dynamic";
    sampling as something the pipeline does not do, so it is offered only while
    that is true — once there is live data the stale report is not offered. */
 export default async function Page() {
-  const [m, seg] = await Promise.all([getLiveMetrics(), getSegmentMetrics("region")]);
+  // Resolve the tenant once so both reads describe the same workspace.
+  const wsId = await currentWorkspaceId();
+  const [m, seg] = await Promise.all([getLiveMetrics(wsId), getSegmentMetrics("region", wsId)]);
   const brand = m.workspace?.brand ?? "Your brand";
   const slug = (m.workspace?.brand ?? "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
   const source = capabilitySource("regions");

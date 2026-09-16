@@ -153,7 +153,7 @@ export default function PromptsBody({ data }: { data: PromptsScreen }) {
       <div style={{flex:"1",display:"flex",minHeight:"0"}}>
         <EmptyState
           title="No prompts tracked yet"
-          body={`${data.brand} has no tracked prompts, so there is nothing for the sampler to run. Add the questions you want asked with “+ Add prompts” above — they go into the next scheduled sample.`}
+          body={`${data.brand} has no tracked prompts, so there is nothing for the sampler to run. Add the questions you want asked with “+ Add prompts” above — they are included the next time a run is started.`}
         >
           <Link href="/app/settings" style={{display:"inline-block",fontSize:"12.5px",fontWeight:500,color:"var(--tx)",border:"1px solid var(--brd)",borderRadius:"7px",padding:"8px 16px",textDecoration:"none"}}>{"Open settings"}</Link>
         </EmptyState>
@@ -171,7 +171,7 @@ export default function PromptsBody({ data }: { data: PromptsScreen }) {
           <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 20px",borderBottom:"1px solid var(--brd)",background:"color-mix(in oklab,var(--ac) 8%,var(--bg1))",fontSize:"12px",lineHeight:1.5}}>
             <span style={{color:"var(--ac)",fontWeight:700}}>◆</span>
             <span style={{color:"var(--mut)"}}>
-              {`Collecting — first sample runs tonight. ${data.rows.length} prompt${data.rows.length === 1 ? "" : "s"} tracked, 0 answers sampled so far.`}
+              {`No sample has run yet — start one from Settings › Platforms. ${data.rows.length} prompt${data.rows.length === 1 ? "" : "s"} tracked, 0 answers sampled so far.`}
             </span>
           </div>
         )}

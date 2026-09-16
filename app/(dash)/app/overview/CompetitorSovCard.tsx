@@ -38,7 +38,7 @@ export default function CompetitorSovCard({ m }: { m: LiveMetrics }) {
       {rows.length === 0 ? (
         <div style={{ padding: "0 19px 19px" }}>
           <CardNote
-            title={m.configured ? "Collecting — first sample runs tonight" : "Not set up yet"}
+            title={m.configured ? "No sample has run yet" : "Not set up yet"}
             body={
               m.configured
                 ? "Share of voice is measured from sampled answers. Your brand and its competitors appear here after the first run."

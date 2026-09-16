@@ -8,6 +8,7 @@ import { citationsReport } from "../citations/reports";
 import { actionsScreen } from "../actions/rows";
 import { actionsReport } from "../actions/reports";
 import { getAgentsView } from "../agents/telemetryView";
+import { currentWorkspaceId } from "@/lib/tenant";
 import { agentsReport } from "../agents/reports";
 
 /* The reports this workspace can actually produce.
@@ -26,8 +27,6 @@ import { agentsReport } from "../agents/reports";
    Counts below are counted off each built spec, not declared: they describe the
    file the button will actually write. */
 
-/** Same workspace id the Actions screen saves under (lib/db/entities). */
-const WORKSPACE = "demo";
 
 export type ExportableReport = {
   id: string;
@@ -78,10 +77,12 @@ function entry(
 
 /** Live metrics plus every report that can be built from them today. */
 export async function reportCatalog(): Promise<{ metrics: LiveMetrics; reports: ExportableReport[] }> {
+  // Resolve the tenant once so every read below describes the same workspace.
+  const wsId = await currentWorkspaceId();
   const [metrics, saved, agents] = await Promise.all([
-    getLiveMetrics(),
-    listActions(WORKSPACE).catch(() => []),
-    getAgentsView(),
+    getLiveMetrics(wsId),
+    listActions(wsId).catch(() => []),
+    getAgentsView(wsId),
   ]);
 
   const slug = slugOf(metrics);

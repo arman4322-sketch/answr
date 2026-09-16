@@ -3,6 +3,7 @@ import { answerStore, type PromptRun } from "@/lib/sampler/store";
 import { getWorkspace, identityOf } from "@/lib/workspace";
 import { pickProvider } from "@/lib/providers/registry";
 import { brandMatcher } from "./entity";
+import { currentWorkspaceId, scopeKey } from "@/lib/tenant";
 
 /* Classification pass — turns answers Answr has ALREADY sampled into two more
    live metrics, using only the provider keys already connected:
@@ -38,14 +39,17 @@ export interface PromptTopic {
   ts: number;
 }
 
-const SENTIMENT_COLLECTION = "sentiment";
-const TOPIC_COLLECTION = "prompt_topics";
+/* Both collections describe one workspace's own answers and prompt set, so they
+ * are namespaced by workspace. The demo workspace keeps the unsuffixed name
+ * (lib/tenant scopeKey), so rows written before tenancy stay readable. */
+const sentimentCollection = (workspaceId: string) => scopeKey("sentiment", workspaceId);
+const topicCollection = (workspaceId: string) => scopeKey("prompt_topics", workspaceId);
 
-export function listSentiment(): Promise<AnswerSentiment[]> {
-  return db().list<AnswerSentiment>(SENTIMENT_COLLECTION);
+export async function listSentiment(workspaceId?: string): Promise<AnswerSentiment[]> {
+  return db().list<AnswerSentiment>(sentimentCollection(workspaceId ?? (await currentWorkspaceId())));
 }
-export function listPromptTopics(): Promise<PromptTopic[]> {
-  return db().list<PromptTopic>(TOPIC_COLLECTION);
+export async function listPromptTopics(workspaceId?: string): Promise<PromptTopic[]> {
+  return db().list<PromptTopic>(topicCollection(workspaceId ?? (await currentWorkspaceId())));
 }
 
 /** Deterministic id so re-running never double-counts the same answer. */
@@ -87,7 +91,9 @@ export interface ClassifyReport {
  * Classify any not-yet-classified answers and tag any untagged prompts.
  * Safe to run repeatedly — it only processes what's new.
  */
-export async function runClassification(opts: { limit?: number } = {}): Promise<ClassifyReport> {
+export async function runClassification(
+  opts: { limit?: number; workspaceId?: string } = {},
+): Promise<ClassifyReport> {
   const base: ClassifyReport = {
     ok: false,
     sentimentClassified: 0,
@@ -98,18 +104,20 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
 
   const provider = pickProvider();
   if (!provider) return { ...base, reason: "no-provider" };
-  const workspace = await getWorkspace();
+  // Resolve the tenant once; every read and write below uses this id.
+  const workspaceId = opts.workspaceId ?? (await currentWorkspaceId());
+  const workspace = await getWorkspace(workspaceId);
   if (!workspace) return { ...base, reason: "no-workspace" };
 
   // Sentiment and topics describe the overall picture, so segmented runs are
   // left out: a persona-framed answer says how the brand reads TO THAT BUYER,
   // which belongs on the Audiences screen, not in the headline split.
-  const stored = await answerStore().recentRuns(opts.limit ?? 2000);
+  const stored = await answerStore(workspaceId).recentRuns(opts.limit ?? 2000);
   const runs: PromptRun[] = stored.filter((r) => !r.segment);
   if (runs.length === 0) return { ...base, reason: "no-answers", provider: provider.id };
 
   const brand = workspace.brand;
-  const existing = await listSentiment();
+  const existing = await listSentiment(workspaceId);
   const done = new Set(existing.map((s) => s.id));
 
   let classified = 0;
@@ -120,7 +128,7 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
   // Matching the name alone would score answers about an unrelated company of
   // the same name, and the themes would come back describing that company's
   // product instead of this one.
-  const isBrand = await brandMatcher(identityOf(workspace));
+  const isBrand = await brandMatcher(identityOf(workspace), workspaceId);
 
   const pending: { id: string; run: PromptRun; provider: string; text: string }[] = [];
   for (const run of runs) {
@@ -161,7 +169,7 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
           : [],
         ts: Date.now(),
       };
-      await db().put(SENTIMENT_COLLECTION, rec);
+      await db().put(sentimentCollection(workspaceId), rec);
       classified += 1;
     } catch {
       errors += 1;
@@ -172,7 +180,7 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
   const trackedPrompts = workspace.prompts.length
     ? workspace.prompts
     : [...new Set(runs.map((r) => r.prompt))];
-  const existingTopics = await listPromptTopics();
+  const existingTopics = await listPromptTopics(workspaceId);
   const taggedFor = new Map(existingTopics.map((t) => [t.prompt, t]));
   const untagged = trackedPrompts.filter((p) => !taggedFor.has(p));
 
@@ -199,7 +207,7 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
             topic,
             ts: Date.now(),
           };
-          await db().put(TOPIC_COLLECTION, rec);
+          await db().put(topicCollection(workspaceId), rec);
           topicsAssigned += 1;
         }
       } else {

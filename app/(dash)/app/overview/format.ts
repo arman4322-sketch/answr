@@ -89,11 +89,11 @@ export function summaryLines(m: LiveMetrics): string[] {
   const brand = m.workspace?.brand ?? "This workspace";
 
   if (!m.configured) {
-    return ["No brand configured yet — set your brand, domain and competitors and the nightly sampler starts collecting answers."];
+    return ["No brand configured yet — set your brand, domain and competitors, then start a run from Settings › Platforms to collect answers."];
   }
   if (!m.hasData) {
     return [
-      `No answers sampled yet for ${brand}. The first run covers ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}; every figure on this screen stays at zero until it lands.`,
+      `No sample has run yet for ${brand}. The first run covers ${int(m.promptsTracked)} tracked prompt${s(m.promptsTracked)}; every figure on this screen stays at zero until it lands. Start it from Settings › Platforms.`,
     ];
   }
 

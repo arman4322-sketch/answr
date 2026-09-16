@@ -192,7 +192,7 @@ export const regionsSpec: ReportSpec = unavailableSpec({
   module: "Answer Engine Insights · Regions",
   feature: "Regional visibility",
   needs:
-    "This needs region-scoped sampling runs (locale-pinned prompts, geo-routed requests), which the nightly sampler doesn't perform — every stored answer is from one unscoped run.",
+    "This needs region-scoped sampling runs (locale-pinned prompts, geo-routed requests), which the sampler doesn't perform — every stored answer is from one unscoped run.",
   alsoMissing: ["Visibility per region", "Share of voice per region", "Answer language per region"],
 });
 
