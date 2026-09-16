@@ -1,33 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import Hint from "@/components/ui/Hint";
 import { METRICS } from "@/lib/metrics";
-import { PROMPT_ROWS, PROMPT_CSV_HEADER, promptRowToCsv, downloadCsv } from "./Controls";
+import { downloadPromptCsv } from "./Controls";
 import PromptDetail from "./PromptDetail";
+import { fmtDate, historyLabel, rankLabel, slugify, statusLabel, type PromptsScreen, type ScreenPromptRow } from "./rows";
 
-/* Prompts body — table + bulk bar + detail panel from frame #prompts, made
-   live: real bulk-select checkboxes (header checkbox toggles all, the count
-   chip tracks the selection — the frame's "3 selected" is the initial state),
-   pagination toasts (playbook 8), the depicted open detail stays (✕ closes it,
-   the highlighted row reopens it, other rows toast), and Export selection
-   downloads the selected fixture rows as a real CSV.
+/* Prompts body — table + bulk bar + detail panel, now reading live rows.
 
-   Column headers carry plain-language hints (Intent / Volume / Visibility /
-   Position); the panel itself lives in PromptDetail.tsx. */
+   The columns are the ones the live pipeline can actually fill. Intent and
+   Volume are gone: nothing in the sampling pipeline classifies a prompt's
+   intent or measures monthly demand, so those two columns could only ever have
+   been fixture values. What replaced them is real per-prompt output: whether
+   the latest answers named the brand, how early they named it, how many engines
+   answered, and when the prompt last ran.
 
-const PAGE_NOTE = "The demo ships the first page of fixture rows — full history lives on live workspaces.";
-const DETAIL_NOTE = "The demo ships one worked prompt detail — other prompts open on live workspaces.";
+   Search, bulk-select and pagination all run against the live rows. Selection
+   is keyed by prompt text so it survives filtering and paging. */
 
-const INTENT_STYLE = {
-  COMMERCIAL: { color: "#7fa7d9", border: "1px solid rgba(127,167,217,.35)" },
-  INFORMATIONAL: { color: "#b98ed9", border: "1px solid rgba(185,142,217,.35)" },
-  BRANDED: { color: "#d9b679", border: "1px solid rgba(217,182,121,.35)" },
+const PAGE_SIZE = 25;
+
+const STATUS_STYLE = {
+  Mentioned: { color: "#4cb782", border: "1px solid rgba(76,183,130,.35)" },
+  "Not mentioned": { color: "#e5636e", border: "1px solid rgba(229,99,110,.35)" },
+  "Awaiting run": { color: "var(--fnt)", border: "1px dashed var(--brd)" },
 } as const;
 
-/* header cell that carries a hint dot — keeps the header's own type styles */
+const GRID = "2.4fr .9fr .7fr .8fr .7fr";
 const HEAD = { display: "inline-flex", alignItems: "center", gap: "6px" } as const;
 
 function Checkbox({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) {
@@ -52,92 +55,199 @@ function Checkbox({ checked, onToggle, label }: { checked: boolean; onToggle: ()
   );
 }
 
-function PagerButton({ label }: { label: string }) {
+/* One centred panel used by both honest empty states. */
+function EmptyState({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={() => toast(PAGE_NOTE)}
-      style={{background:"none",border:"none",padding:0,color:"inherit",fontSize:"11.5px",fontWeight:400,fontVariantNumeric:"tabular-nums",fontFamily:"inherit",cursor:"pointer"}}
-    >
-      {label}
-    </button>
+    <div style={{flex:"1",display:"flex",alignItems:"center",justifyContent:"center",padding:"48px 20px"}}>
+      <div style={{maxWidth:"440px",textAlign:"center"}}>
+        <div style={{fontSize:"15px",fontWeight:600}}>{title}</div>
+        <div style={{fontSize:"12.5px",lineHeight:"1.6",color:"var(--mut)",marginTop:"8px"}}>{body}</div>
+        {children && <div style={{display:"flex",gap:"8px",justifyContent:"center",marginTop:"16px"}}>{children}</div>}
+      </div>
+    </div>
   );
 }
 
-export default function PromptsBody() {
-  const [selected, setSelected] = useState<boolean[]>([true, true, true, false, false, false, false, false]);
-  const [panelOpen, setPanelOpen] = useState(true);
+function pageNumbers(total: number, current: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const from = Math.max(2, current - 1);
+  const to = Math.min(total - 1, current + 1);
+  if (from > 2) out.push("…");
+  for (let i = from; i <= to; i++) out.push(i);
+  if (to < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
+
+export default function PromptsBody({ data }: { data: PromptsScreen }) {
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [active, setActive] = useState<string | null>(data.rows[0]?.prompt ?? null);
+  const [page, setPage] = useState(1);
 
   const query = (useSearchParams().get("q") ?? "").trim().toLowerCase();
-  // Keep the original index so selection/detail logic stays stable while filtering.
-  const visible = PROMPT_ROWS.map((r, i) => ({ r, i })).filter(
-    ({ r }) => !query || r.prompt.toLowerCase().includes(query),
+  const visible = useMemo(
+    () => data.rows.filter((r) => !query || r.prompt.toLowerCase().includes(query)),
+    [data.rows, query],
   );
 
-  const count = selected.filter(Boolean).length;
-  const allSelected = selected.every(Boolean);
-  const toggleAll = () => setSelected(PROMPT_ROWS.map(() => !allSelected));
-  const toggleAny = () => setSelected(PROMPT_ROWS.map(() => count === 0));
-  const toggleRow = (i: number) => setSelected((s) => s.map((v, j) => (j === i ? !v : v)));
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const start = (current - 1) * PAGE_SIZE;
+  const pageRows = visible.slice(start, start + PAGE_SIZE);
+
+  const count = selected.size;
+  const allVisibleSelected = visible.length > 0 && visible.every((r) => selected.has(r.prompt));
+  const activeRow: ScreenPromptRow | null = active ? (data.rows.find((r) => r.prompt === active) ?? null) : null;
+
+  function toggleRow(prompt: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(prompt)) next.delete(prompt);
+      else next.add(prompt);
+      return next;
+    });
+  }
+  function toggleAllVisible() {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (allVisibleSelected) visible.forEach((r) => next.delete(r.prompt));
+      else visible.forEach((r) => next.add(r.prompt));
+      return next;
+    });
+  }
+  function toggleAny() {
+    setSelected((s) => (s.size > 0 ? new Set() : new Set(visible.map((r) => r.prompt))));
+  }
 
   function exportSelection() {
     if (count === 0) {
       toast("Select prompts first — nothing to export.");
       return;
     }
-    downloadCsv(
-      "nike-prompts-selection-30d.csv",
-      [PROMPT_CSV_HEADER, ...PROMPT_ROWS.filter((_, i) => selected[i]).map(promptRowToCsv)],
-      "Selected prompts"
+    downloadPromptCsv(
+      data,
+      data.rows.filter((r) => selected.has(r.prompt)),
+      { filename: `${slugify(data.brand)}-prompts-selection.csv`, sectionTitle: "Selected prompts" },
     );
   }
+
+  /* ── state 1: no workspace ─────────────────────────────────────────────── */
+  if (!data.configured) {
+    return (
+      <div style={{flex:"1",display:"flex",minHeight:"0"}}>
+        <EmptyState
+          title="Set up your brand to start collecting data"
+          body="Prompts are the questions Answr asks the AI engines on your behalf. Name the brand, its domain and its competitors, and the tracked prompt set is generated for you — the first sample runs on the next scheduled run."
+        >
+          <Link href="/onboarding/brand" className="btn-ac" style={{display:"inline-block",fontSize:"12.5px",fontWeight:600,borderRadius:"7px",padding:"8px 16px",textDecoration:"none"}}>{"Set up brand"}</Link>
+          <Link href="/app/settings" style={{display:"inline-block",fontSize:"12.5px",fontWeight:500,color:"var(--tx)",border:"1px solid var(--brd)",borderRadius:"7px",padding:"8px 16px",textDecoration:"none"}}>{"Open settings"}</Link>
+        </EmptyState>
+      </div>
+    );
+  }
+
+  /* ── state 2: workspace, but no prompts tracked at all ─────────────────── */
+  if (data.rows.length === 0) {
+    return (
+      <div style={{flex:"1",display:"flex",minHeight:"0"}}>
+        <EmptyState
+          title="No prompts tracked yet"
+          body={`${data.brand} has no tracked prompts, so there is nothing for the sampler to run. Add the questions you want asked with “+ Add prompts” above — they go into the next scheduled sample.`}
+        >
+          <Link href="/app/settings" style={{display:"inline-block",fontSize:"12.5px",fontWeight:500,color:"var(--tx)",border:"1px solid var(--brd)",borderRadius:"7px",padding:"8px 16px",textDecoration:"none"}}>{"Open settings"}</Link>
+        </EmptyState>
+      </div>
+    );
+  }
+
+  const unsampled = data.rows.filter((r) => !r.sampled).length;
 
   return (
     <div style={{flex:"1",display:"flex",minHeight:"0"}}>
       <div style={{flex:"1",minWidth:"0",borderRight:"1px solid var(--brd)"}}>
-        <div style={{display:"grid",gridTemplateColumns:"2.4fr .8fr .7fr .8fr .7fr",padding:"10px 20px",fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".12em",textTransform:"uppercase",color:"var(--fnt)",borderBottom:"1px solid var(--brd)"}}>
-          <span style={{display:"flex",alignItems:"center",gap:"8px"}}><Checkbox checked={allSelected} onToggle={toggleAll} label="Select all prompts" />{"Prompt"}</span>
-          <span style={HEAD}>{"Intent"}<Hint text="Why someone asks: to buy, to learn, or to compare" size={11} /></span>
-          <span style={HEAD}>{"Volume"}<Hint text={METRICS.demand_volume.plain} size={11} /></span>
-          <span style={HEAD}>{"Visibility"}<Hint text={METRICS.visibility_score.plain} size={11} /></span>
-          <span style={HEAD}>{"Position"}<Hint text={METRICS.avg_answer_position.plain} align="right" size={11} /></span>
-        </div>
-        {visible.length === 0 && (
-          <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--mut)", fontSize: "13px" }}>
-            {`No prompts match “${query}”. Clear the search to see all ${PROMPT_ROWS.length} loaded.`}
+        {/* ── state 3: configured, nothing sampled yet — zeros, never fake data ── */}
+        {!data.hasData && (
+          <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 20px",borderBottom:"1px solid var(--brd)",background:"color-mix(in oklab,var(--ac) 8%,var(--bg1))",fontSize:"12px",lineHeight:1.5}}>
+            <span style={{color:"var(--ac)",fontWeight:700}}>◆</span>
+            <span style={{color:"var(--mut)"}}>
+              {`Collecting — first sample runs tonight. ${data.rows.length} prompt${data.rows.length === 1 ? "" : "s"} tracked, 0 answers sampled so far.`}
+            </span>
           </div>
         )}
-        {visible.map(({ r, i }) => (
-          <div
-            key={r.prompt}
-            className="row-hover"
-            onClick={() => (i === 0 ? setPanelOpen(true) : toast(DETAIL_NOTE))}
-            style={{display:"grid",gridTemplateColumns:"2.4fr .8fr .7fr .8fr .7fr",alignItems:"center",padding:"13px 20px",fontSize:"13px",cursor:"pointer",...(i === 0 ? {background:"color-mix(in oklab,var(--ac) 6%,transparent)",borderLeft:"2px solid var(--ac)"} : {borderTop:"1px solid var(--brd)"})}}
-          >
-            <span style={{display:"flex",alignItems:"center",gap:"8px",...(i === 0 ? {fontWeight:"500"} : {color:"var(--mut)"})}}>
-              <Checkbox checked={selected[i]} onToggle={() => toggleRow(i)} label={`Select "${r.prompt}"`} />
-              <span style={{lineHeight:"1.4"}}>{r.prompt}</span>
-            </span>
-            <span><span style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:INTENT_STYLE[r.intent].color,border:INTENT_STYLE[r.intent].border,borderRadius:"4px",padding:"2px 6px"}}>{r.intent}</span></span>
-            <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{r.volume}</span>
-            <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{r.visibility}</span>
-            <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{r.position}</span>
+        {data.hasData && unsampled > 0 && (
+          <div style={{padding:"9px 20px",borderBottom:"1px solid var(--brd)",fontSize:"11.5px",color:"var(--fnt)",lineHeight:1.5}}>
+            {`${unsampled} prompt${unsampled === 1 ? "" : "s"} added since the last run — they show “—” until the next sample.`}
           </div>
-        ))}
+        )}
+
+        <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 20px",fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",letterSpacing:".12em",textTransform:"uppercase",color:"var(--fnt)",borderBottom:"1px solid var(--brd)"}}>
+          <span style={{display:"flex",alignItems:"center",gap:"8px"}}><Checkbox checked={allVisibleSelected} onToggle={toggleAllVisible} label="Select all prompts" />{"Prompt"}</span>
+          <span style={HEAD}>{"Mentioned"}<Hint text={METRICS.visibility_score.plain} size={11} /></span>
+          <span style={HEAD}>{"Rank"}<Hint text={METRICS.avg_answer_position.plain} size={11} /></span>
+          <span style={HEAD}>{"Engines"}<Hint text="How many AI engines answered this prompt in its latest run" size={11} /></span>
+          <span style={HEAD}>{"Last run"}<Hint text="When this prompt was last sampled" align="right" size={11} /></span>
+        </div>
+
+        {visible.length === 0 && (
+          <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--mut)", fontSize: "13px" }}>
+            {`No prompts match “${query}”. Clear the search to see all ${data.rows.length} tracked.`}
+          </div>
+        )}
+
+        {pageRows.map((r, i) => {
+          const status = statusLabel(r);
+          const isActive = r.prompt === active;
+          return (
+            <div
+              key={r.prompt}
+              className="row-hover"
+              onClick={() => setActive(r.prompt)}
+              style={{display:"grid",gridTemplateColumns:GRID,alignItems:"center",padding:"13px 20px",fontSize:"13px",cursor:"pointer",...(isActive ? {background:"color-mix(in oklab,var(--ac) 6%,transparent)",borderLeft:"2px solid var(--ac)"} : { borderTop: i === 0 && !isActive ? "none" : "1px solid var(--brd)" })}}
+            >
+              <span style={{display:"flex",alignItems:"center",gap:"8px",...(isActive ? {fontWeight:"500"} : {color:"var(--mut)"})}}>
+                <Checkbox checked={selected.has(r.prompt)} onToggle={() => toggleRow(r.prompt)} label={`Select "${r.prompt}"`} />
+                <span style={{lineHeight:"1.4"}}>{r.prompt}</span>
+              </span>
+              <span><span style={{fontSize:"10px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:STATUS_STYLE[status].color,border:STATUS_STYLE[status].border,borderRadius:"4px",padding:"2px 6px"}}>{status.toUpperCase()}</span></span>
+              <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums"}}>{rankLabel(r)}</span>
+              <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{r.sampled ? r.providersAnswered : "—"}</span>
+              <span style={{fontSize:"12.5px",fontWeight:"500",fontVariantNumeric:"tabular-nums",color:"var(--mut)"}}>{fmtDate(r.ts)}</span>
+            </div>
+          );
+        })}
+
         <div style={{display:"flex",alignItems:"center",gap:"8px",padding:"10px 20px",borderTop:"1px solid var(--brd)",fontSize:"12px",background:"var(--bg1)"}}>
           <Checkbox checked={count > 0} onToggle={toggleAny} label="Toggle selection" />
           <span style={{color:"var(--mut)",fontVariantNumeric:"tabular-nums"}}>{`${count} selected`}</span>
-          <button type="button" onClick={() => toast("Topic assignments update on live workspaces.")} style={{marginLeft:"8px",border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",fontWeight:500,background:"transparent",color:"var(--tx)",fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Assign topic"}</button>
-          <button type="button" onClick={() => toast("Tag assignments update on live workspaces.")} style={{border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",fontWeight:500,background:"transparent",color:"var(--tx)",fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Assign tag"}</button>
-          <button type="button" onClick={() => toast("Archiving prompts applies on live workspaces.")} style={{color:"var(--mut)",border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",background:"transparent",fontSize:"12px",fontWeight:400,fontFamily:"inherit",cursor:"pointer"}}>{"Archive"}</button>
+          <button type="button" onClick={() => toast("Topics aren’t part of the live workspace yet — prompts carry no topic field.")} style={{marginLeft:"8px",border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",fontWeight:500,background:"transparent",color:"var(--tx)",fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Assign topic"}</button>
+          <button type="button" onClick={() => toast("Tags aren’t part of the live workspace yet — prompts carry no tag field.")} style={{border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",fontWeight:500,background:"transparent",color:"var(--tx)",fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Assign tag"}</button>
+          <button type="button" onClick={() => toast("Archiving isn’t wired up yet — remove prompts in Settings › Brand.")} style={{color:"var(--mut)",border:"1px solid var(--brd)",borderRadius:"6px",padding:"4px 10px",background:"transparent",fontSize:"12px",fontWeight:400,fontFamily:"inherit",cursor:"pointer"}}>{"Archive"}</button>
           <button type="button" onClick={exportSelection} style={{marginLeft:"auto",color:"var(--ac)",fontWeight:500,background:"none",border:"none",padding:0,fontSize:"12px",fontFamily:"inherit",cursor:"pointer"}}>{"Export selection"}</button>
         </div>
-        <div style={{padding:"14px 20px",borderTop:"1px solid var(--brd)",fontSize:"11.5px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",display:"flex",justifyContent:"space-between"}}>
-          <span>{query ? `Showing ${visible.length} of ${PROMPT_ROWS.length} loaded` : "Showing 8 of 412"}</span>
-          <span><PagerButton label="‹" />{" "}<span style={{color:"var(--tx)"}}>{"1"}</span>{" "}<PagerButton label="2" />{" "}<PagerButton label="3" />{" … "}<PagerButton label="52" />{" "}<PagerButton label="›" /></span>
+
+        <div style={{padding:"14px 20px",borderTop:"1px solid var(--brd)",fontSize:"11.5px",fontWeight:"400",fontVariantNumeric:"tabular-nums",color:"var(--fnt)",display:"flex",justifyContent:"space-between",gap:"12px"}}>
+          <span>
+            {visible.length === 0
+              ? `0 of ${data.rows.length} tracked`
+              : `Showing ${start + 1}–${start + pageRows.length} of ${visible.length}${query ? ` matching “${query}”` : ""} · ${data.rows.length} tracked · ${historyLabel(data.days)}`}
+          </span>
+          {totalPages > 1 && (
+            <span style={{display:"inline-flex",gap:"6px",alignItems:"center"}}>
+              <button type="button" aria-label="Previous page" disabled={current === 1} onClick={() => setPage(current - 1)} style={{background:"none",border:"none",padding:0,color:current === 1 ? "var(--fnt)" : "var(--tx)",fontSize:"11.5px",fontFamily:"inherit",cursor:current === 1 ? "default" : "pointer"}}>{"‹"}</button>
+              {pageNumbers(totalPages, current).map((p, i) =>
+                p === "…" ? (
+                  <span key={`gap-${i}`}>{"…"}</span>
+                ) : (
+                  <button key={p} type="button" aria-current={p === current} onClick={() => setPage(p)} style={{background:"none",border:"none",padding:0,color:p === current ? "var(--tx)" : "inherit",fontWeight:p === current ? 600 : 400,fontSize:"11.5px",fontFamily:"inherit",cursor:"pointer"}}>{p}</button>
+                ),
+              )}
+              <button type="button" aria-label="Next page" disabled={current === totalPages} onClick={() => setPage(current + 1)} style={{background:"none",border:"none",padding:0,color:current === totalPages ? "var(--fnt)" : "var(--tx)",fontSize:"11.5px",fontFamily:"inherit",cursor:current === totalPages ? "default" : "pointer"}}>{"›"}</button>
+            </span>
+          )}
         </div>
       </div>
-      {panelOpen && <PromptDetail onClose={() => setPanelOpen(false)} />}
+      {activeRow && <PromptDetail row={activeRow} screen={data} onClose={() => setActive(null)} />}
     </div>
   );
 }

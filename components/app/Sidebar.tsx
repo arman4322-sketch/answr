@@ -30,35 +30,45 @@ type Item = {
   attention?: number;
 };
 
-const GROUPS: { title: string; items: Item[] }[] = [
-  {
-    title: "Monitor",
-    items: [
-      { icon: "overview", label: "Overview", href: "/app/overview" },
-      { icon: "live", label: "Live Scan", href: "/app/scan", badge: "live" },
-      { icon: "insights", label: "Answer Engine Insights", href: "/app/insights" },
-      { icon: "citations", label: "Citations", href: "/app/citations", count: "1,284" },
-      { icon: "prompts", label: "Prompts", href: "/app/prompts", count: "412" },
-      { icon: "conversations", label: "Conversations", href: "/app/conversations", count: "38" },
-      { icon: "demand", label: "Demand", href: "/app/demand", badge: "NEW" },
-    ],
-  },
-  {
-    title: "Optimize",
-    items: [
-      { icon: "actions", label: "Actions", href: "/app/actions", attention: 12 },
-      { icon: "workflows", label: "Workflows", href: "/app/workflows", badge: "NEW" },
-      { icon: "reports", label: "Reports", href: "/app/reports", count: "3" },
-    ],
-  },
-  {
-    title: "Infrastructure",
-    items: [
-      { icon: "agents", label: "Agent Analytics", href: "/app/agents" },
-      { icon: "live", label: "Live telemetry", href: "/app/live", badge: "live" },
-    ],
-  },
-];
+/** Live counts supplied by the dashboard layout (real sampled data). */
+export type SidebarCounts = { citations?: number; prompts?: number };
+
+const nfmt = (n?: number) => (typeof n === "number" && n > 0 ? n.toLocaleString() : undefined);
+
+/* Nav is a function of the live counts: a count renders only when the live
+   layer actually has one. Fixture counts (Conversations 38, Reports 3, the
+   Actions attention dot) are gone — they described data that no longer exists. */
+function groupsFor(counts?: SidebarCounts): { title: string; items: Item[] }[] {
+  return [
+    {
+      title: "Monitor",
+      items: [
+        { icon: "overview", label: "Overview", href: "/app/overview" },
+        { icon: "live", label: "Live Scan", href: "/app/scan", badge: "live" },
+        { icon: "insights", label: "Answer Engine Insights", href: "/app/insights" },
+        { icon: "citations", label: "Citations", href: "/app/citations", count: nfmt(counts?.citations) },
+        { icon: "prompts", label: "Prompts", href: "/app/prompts", count: nfmt(counts?.prompts) },
+        { icon: "conversations", label: "Conversations", href: "/app/conversations" },
+        { icon: "demand", label: "Demand", href: "/app/demand" },
+      ],
+    },
+    {
+      title: "Optimize",
+      items: [
+        { icon: "actions", label: "Actions", href: "/app/actions" },
+        { icon: "workflows", label: "Workflows", href: "/app/workflows" },
+        { icon: "reports", label: "Reports", href: "/app/reports" },
+      ],
+    },
+    {
+      title: "Infrastructure",
+      items: [
+        { icon: "agents", label: "Agent Analytics", href: "/app/agents" },
+        { icon: "live", label: "Live telemetry", href: "/app/live", badge: "live" },
+      ],
+    },
+  ];
+}
 
 function isActive(pathname: string, href: string) {
   // Sub-pages keep their parent active; sub-nav lives in the page header.
@@ -66,7 +76,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export default function Sidebar() {
+export default function Sidebar({ counts }: { counts?: SidebarCounts } = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -171,7 +181,7 @@ export default function Sidebar() {
         )}
       </button>
 
-      {GROUPS.map((g) => (
+      {groupsFor(counts).map((g) => (
         <div key={g.title} style={{ width: "100%" }}>
           {collapsed ? (
             <div style={{ width: "20px", height: "1px", background: "var(--brd)", margin: "13px auto 9px" }} />

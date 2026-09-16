@@ -1,113 +1,123 @@
-import type { ReportSpec } from "@/lib/export/report";
-import { overviewReport, seriesSection } from "@/lib/export/reports";
+import type { ReportSpec, ReportSection, SummaryStat } from "@/lib/export/report";
+import { seriesSection } from "@/lib/export/reports";
 import { METRICS } from "@/lib/metrics";
-import {
-  appearancesTrend,
-  clicksTrend,
-  clicksXLabels,
-  overviewXLabels,
-  visibilityTrend,
-} from "@/lib/data/overview";
+import type { LiveMetrics } from "@/lib/live/metrics";
+import { dayLabel, historyNote, int, pct, s, seriesDelta } from "./format";
 
-/* Overview → executive CSV.
+/* Overview → executive CSV, built from the same live metrics the screen renders.
 
-   Everything the screen shows, in the order a reader would want it: the four
-   headline KPIs with deltas and a plain-English read (METRICS[id].plain), the
-   three trends behind the "Performance over time" card, then the competitor,
-   platform and source tables — and the week's written digest verbatim.
-   Figures are the page's own fixtures; no number is restated differently. */
+   Every cell is a measured value. Where the fixture report used to carry a
+   "Change vs previous" column, this one does not: there is no previous window
+   to compare against until the sampler has accumulated history, so the report
+   states the window it really covers ("Sampled history: N days") and omits
+   deltas it cannot compute. The visibility/share-of-voice trend table prints
+   only the days that were actually sampled, one row each. */
 
-const base = overviewReport({
-  brand: "Nike",
-  kpis: [
+export function overviewSpec(m: LiveMetrics): ReportSpec {
+  const brand = m.workspace?.brand ?? "Workspace";
+  const visDelta = seriesDelta(m.series, (p) => p.visibility);
+  const sovDelta = seriesDelta(m.series, (p) => p.shareOfVoice);
+  const first = m.series[0]?.date;
+  const last = m.series[m.series.length - 1]?.date;
+
+  const summary: SummaryStat[] = [
     {
       label: METRICS.visibility_score.label,
-      value: "34.2%",
-      delta: "+2.8pt",
-      note: `${METRICS.visibility_score.plain}. Up on the back of Google AI Overviews (+4.6) after three new runnersworld.com citations.`,
+      value: pct(m.visibilityScore),
+      delta: visDelta === null ? undefined : `${visDelta >= 0 ? "+" : "-"}${Math.abs(visDelta).toFixed(1)}pt`,
+      note:
+        `${METRICS.visibility_score.plain}. Scored over ${int(m.answersSampled)} sampled answer${s(m.answersSampled)}` +
+        (visDelta === null ? `. Only ${historyNote(m.days)} — no change reported.` : ` across ${historyNote(m.days)}.`),
     },
     {
       label: METRICS.share_of_voice.label,
-      value: "28.6%",
-      delta: "+1.1pt",
-      note: `${METRICS.share_of_voice.plain}. Still #1 in the category; Adidas is 4.5pt behind and falling.`,
+      value: pct(m.shareOfVoice),
+      delta: sovDelta === null ? undefined : `${sovDelta >= 0 ? "+" : "-"}${Math.abs(sovDelta).toFixed(1)}pt`,
+      note: `${METRICS.share_of_voice.plain}. ${brand} against ${int(m.workspace?.competitors.length ?? 0)} tracked competitor${s(m.workspace?.competitors.length ?? 0)}.`,
     },
     {
-      label: "Citations · 30d",
-      value: "1,284",
-      delta: "+212",
-      note: `${METRICS.citations_count.plain}. runnersworld.com passed reddit.com as the top earned source this window.`,
+      label: "Citations · sampled answers",
+      value: int(m.citationsCount),
+      note: `${METRICS.citations_count.plain}. ${int(m.uniqueCitedDomains)} distinct domain${s(m.uniqueCitedDomains)}; ${pct(m.ownedCitationShare)} point at ${m.workspace?.domain || "the workspace domain"}.`,
     },
     {
       label: METRICS.avg_answer_position.label,
-      value: "2.4",
-      delta: "-0.2 (worse — lower is better)",
-      note: `${METRICS.avg_answer_position.plain}. Slipping while visibility rises: Nike appears in more answers but later inside them.`,
+      value: m.avgAnswerPosition == null ? "Not named yet" : m.avgAnswerPosition.toFixed(1),
+      note: `${METRICS.avg_answer_position.plain}. Named ahead of every competitor in ${int(m.answerRankFirst)} answer${s(m.answerRankFirst)}.`,
     },
     {
       label: METRICS.prompts_tracked.label,
-      value: "412 of 1,000 used",
-      note: `${METRICS.prompts_tracked.plain}. The whole report is computed over these 412 prompts.`,
+      value: `${int(m.promptsTracked)} prompt${s(m.promptsTracked)}`,
+      note: `${METRICS.prompts_tracked.plain}. Everything in this report is computed over these prompts.`,
     },
     {
-      label: METRICS.actions_queue.label,
-      value: "24 open",
-      note: "Recommended fixes waiting. Action #87 targets the blocked /help crawl path called out below.",
+      label: "Sampled history",
+      value: `${int(m.days)} day${s(m.days)}`,
+      note:
+        m.lastRunAt == null
+          ? "No runs collected yet."
+          : `Days on which runs were actually collected${first && last ? ` (${dayLabel(first)} – ${dayLabel(last)})` : ""}. Trends are computed from these days only.`,
     },
-  ],
-  visibilitySeries: visibilityTrend,
-  xLabels: overviewXLabels,
-  competitors: [
-    { rank: "1", brand: "Nike (You)", sov: "28.6%", delta: "+1.1", topPlatform: "ChatGPT" },
-    { rank: "2", brand: "Adidas", sov: "24.1%", delta: "-0.6", topPlatform: "Perplexity" },
-    { rank: "3", brand: "Brooks", sov: "18.9%", delta: "+0.3", topPlatform: "Gemini" },
-    { rank: "4", brand: "Asics", sov: "15.2%", delta: "-1.4", topPlatform: "ChatGPT" },
-    { rank: "5", brand: "New Balance", sov: "13.2%", delta: "+0.9", topPlatform: "Claude" },
-  ],
-  platforms: [
-    { platform: "ChatGPT", visibility: "41.8%", delta: "+3.2" },
-    { platform: "Perplexity", visibility: "36.4%", delta: "+1.9" },
-    { platform: "Google AI Overviews", visibility: "31.0%", delta: "+4.6" },
-    { platform: "Claude", visibility: "27.7%", delta: "-0.8" },
-    { platform: "Gemini", visibility: "22.1%", delta: "+0.4" },
-  ],
-  sources: [
-    { source: "runnersworld.com", citations: "248", delta: "+41" },
-    { source: "nike.com/running", citations: "201", delta: "+38" },
-    { source: "reddit.com", citations: "164", delta: "+67" },
-    { source: "wirecutter.com", citations: "97", delta: "-8" },
-    { source: "wikipedia.org", citations: "61", delta: "—" },
-  ],
-});
+  ];
 
-export const overviewSpec: ReportSpec = {
-  ...base,
-  sections: [
-    base.sections[0],
-    seriesSection("Appearances by platform — daily trend", appearancesTrend, overviewXLabels, {
-      unit: "prompts",
-      note: `${METRICS.platform_appearances.plain}. Count of the 412 tracked prompts whose latest answer names Nike, per platform — prompts overlap, so columns do not sum.`,
-    }),
-    seriesSection("AI-referral clicks by platform — weekly", clicksTrend, clicksXLabels, {
-      unit: "clicks",
-      note: `${METRICS.ai_referrals.plain}. Weekly clicks landing on nike.com, by source platform (30-day totals: ChatGPT 1,842 · AI Overviews 1,204 · Perplexity 926 · Gemini 512 · Claude 388).`,
-    }),
-    ...base.sections.slice(1),
-    {
-      title: "This week, summarized",
-      note: "The digest Answr generated for this workspace, verbatim.",
-      columns: ["Generated", "Summary"],
-      rows: [
+  const sections: ReportSection[] = [];
+
+  if (m.series.length > 0) {
+    sections.push(
+      seriesSection(
+        "Visibility and share of voice — sampled days",
         [
-          "Aug 4, 09:00",
-          "Visibility rose +2.8pt, led by Google AI Overviews (+4.6) after three new runnersworld.com citations. runnersworld.com passed reddit.com as your top earned source. Product-page citations still trail nike.com/running 5:1 while ClaudeBot stays blocked on /help — action #87 targets this. One watch item: \"price at full retail\" is trending negative from a stale cached pricing page.",
+          { id: "vis", label: "Visibility", color: "var(--ac)", points: m.series.map((p) => p.visibility) },
+          { id: "sov", label: "Share of voice", color: "#7fa7d9", points: m.series.map((p) => p.shareOfVoice) },
         ],
-      ],
-    },
-  ],
-  footnotes: [
-    ...(base.footnotes ?? []),
-    "Appearances are unweighted per-platform counts; the visibility score is platform- and position-weighted. The two move differently by design.",
-    "AI-referral clicks are raw click events from Demand; the Referrals module's 3,412 figure is deduplicated sessions.",
-  ],
-};
+        m.series.map((p) => p.date),
+        { unit: "%", note: "One row per day the sampler ran. Days with no runs are absent rather than interpolated." }
+      )
+    );
+    sections.push({
+      title: "Runs collected per sampled day",
+      note: "Prompt runs stored that day — the sample size behind that day's scores.",
+      columns: ["Date", "Runs"],
+      rows: m.series.map((p) => [p.date, p.runs]),
+    });
+  }
+
+  sections.push({
+    title: "Share of voice by brand",
+    note: "Of all tracked-brand mentions in the latest answer per prompt. Rows sum to 100%.",
+    columns: ["Rank", "Brand", "Share of voice", "Prompts naming it"],
+    rows: m.brands.map((b, i) => [String(i + 1), b.isBrand ? `${b.name} (You)` : b.name, pct(b.share), b.mentions]),
+  });
+
+  sections.push({
+    title: "Visibility by platform",
+    note: "Answers naming the brand ÷ answers returned, per engine that answered.",
+    columns: ["Platform", "Visibility", "Answers naming brand", "Answers returned"],
+    rows: m.platforms.map((p) => [p.label, pct(p.visibility), p.appearances, p.answers]),
+  });
+
+  sections.push({
+    title: "Top cited sources",
+    note: "Domains the sampled answers linked to, most cited first.",
+    columns: ["Source", "Citations", "Share of citations", "Owned"],
+    rows: m.citedDomains.map((d) => [d.domain, d.count, pct(d.share), d.owned ? "yes" : "no"]),
+  });
+
+  return {
+    module: "Overview",
+    brand,
+    window:
+      m.series.length > 0 && first && last
+        ? `Sampled history: ${int(m.days)} day${s(m.days)} (${dayLabel(first)} – ${dayLabel(last)})`
+        : "No sampled runs yet",
+    windowNote:
+      "This report covers only the days the sampler actually ran — there is no 30-day comparison window, so change-vs-previous columns are omitted rather than estimated.",
+    summary,
+    sections,
+    footnotes: [
+      "Visibility is platform- and position-weighted; share of voice is unweighted mention share. They differ by design.",
+      `Figures are computed live from sampled answers (lib/live/metrics), not from a sample dataset${m.lastRunAt ? `; last run ${dayLabel(new Date(m.lastRunAt).toISOString().slice(0, 10))}` : ""}.`,
+      "Full metric definitions: METRICS.md, or the ⓘ beside each KPI in-app.",
+    ],
+  };
+}

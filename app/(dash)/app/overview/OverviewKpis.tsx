@@ -1,118 +1,87 @@
-"use client";
-
 import KpiCard from "@/components/app/KpiCard";
 import Sparkline from "@/components/ui/Sparkline";
-import { useFilters } from "@/lib/filters/context";
-import {
-  countStat,
-  deltaTone,
-  extendCount,
-  extendLevel,
-  fmtDelta,
-  fmtInt,
-  levelStat,
-  seriesKey,
-  sliceWindow,
-} from "@/lib/filters/windows";
-import { avgPositionSeries, shareOfVoiceSeries, visibilityTrend } from "@/lib/data/overview";
-import { CITATIONS_PREV_TOTAL, citationsDaily } from "@/lib/data/evidence";
+import type { LiveMetrics } from "@/lib/live/metrics";
+import { fmtDelta, historyNote, int, pct, s, seriesDelta } from "./format";
 
-/* Overview KPI row — live on the topbar's date range.
+/* Overview KPI row — live values from lib/live/metrics.
 
-   Each card reads its number off the daily series behind it: the value is the
-   window's endpoint (or its sum, for citations), the delta is endpoint −
-   start-of-window (or window sum − previous window's sum), and the sparkline
-   draws the same points. On "Last 30 days" every card renders exactly the
-   numbers the frame shipped — 34.2% ↑2.8 · 28.6% ↑1.1 · 1,284 ↑212 · 2.4 ↓0.2. */
+   Every figure is measured: the visibility score and share of voice are the
+   scored values for the sampled corpus, citations are the citations actually
+   parsed out of those answers, and the answer position is the mean mention rank
+   (null — rendered as a dash — until the brand is named at all).
 
-export default function OverviewKpis() {
-  const { window, platform, platformInfo } = useFilters();
-  const days = window.days;
+   Deltas are the honest part. There is no 30-day back-history to compare to:
+   the only trend that exists is `series`, one point per day actually sampled.
+   So a delta is shown ONLY when that series has two or more points, computed
+   last-minus-first, and captioned with how many days it covers. Citations and
+   answer position have no per-day series behind them, so they carry no delta at
+   all rather than a fabricated one. Card markup and layout are the frame's. */
 
-  /* Keys match the cards these KPIs restate — the Visibility line in
-     "Performance over time" (overview:visibility:nike) and the Nike row in
-     "Competitor share of voice" (overview:sov:Nike) — so a KPI can never show a
-     different window than the chart under it. */
-  const visibility = sliceWindow(extendLevel(visibilityTrend[0].points, seriesKey("overview:visibility", visibilityTrend[0].id)), days);
-  const sov = sliceWindow(extendLevel(shareOfVoiceSeries, "overview:sov:Nike"), days);
-  const position = sliceWindow(extendLevel(avgPositionSeries, "overview:position"), days);
+export default function OverviewKpis({ m }: { m: LiveMetrics }) {
+  const visPoints = m.series.map((p) => p.visibility);
+  const sovPoints = m.series.map((p) => p.shareOfVoice);
+  const visDelta = seriesDelta(m.series, (p) => p.visibility);
+  const sovDelta = seriesDelta(m.series, (p) => p.shareOfVoice);
 
-  const citationHistory = extendCount(citationsDaily, "citations:daily", { prevSum: CITATIONS_PREV_TOTAL });
-  const citations = countStat(citationHistory, days);
-  const citationWindow = sliceWindow(citationHistory, days);
-
-  const vis = levelStat(visibility);
-  const share = levelStat(sov);
-  const pos = levelStat(position);
+  /* One caption for the two trended cards: what the delta covers, or why there
+     isn't one yet. */
+  const trendSub = !m.hasData
+    ? "Collecting — first sample runs tonight"
+    : m.series.length < 2
+      ? `${historyNote(m.days)} — trend starts on the second sampled day`
+      : `Change over ${historyNote(m.days)}`;
 
   return (
-    <>
-      {/* Overview is the one screen that honors the platform filter, but only
-          partly: the trend chart and "Visibility by platform" re-slice, while
-          these four KPIs (and competitor share of voice / top sources) have no
-          per-platform fixture behind them and stay all-platform. Rather than
-          let a selected platform silently imply it scoped everything, say so —
-          inline, only while a platform is selected, so the default render at
-          "all platforms" is untouched. */}
-      {platform !== "all" && (
-        <div
-          role="note"
-          style={{
-            fontSize: "11.5px",
-            lineHeight: 1.5,
-            color: "var(--fnt)",
-            background: "var(--bg1)",
-            border: "1px solid var(--brd)",
-            borderRadius: "8px",
-            padding: "8px 12px",
-          }}
-        >
-          Filtered to <span style={{ color: "var(--mut)" }}>{platformInfo.label}</span>. That applies to
-          Performance over time and Visibility by platform. The four cards below, competitor share of
-          voice and top sources have no per-platform breakdown in this workspace and stay scored across
-          all platforms.
-        </div>
-      )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "14px" }}>
-        <KpiCard
-          label="Visibility score"
-          value={`${vis.value.toFixed(1)}%`}
-          metricId="visibility_score"
-          delta={fmtDelta(vis.delta)}
-          deltaGood={deltaTone(vis.delta)}
-        >
-          <Sparkline points={visibility} good={vis.delta >= 0} />
-        </KpiCard>
-        <KpiCard
-          label="Share of voice"
-          value={`${share.value.toFixed(1)}%`}
-          metricId="share_of_voice"
-          delta={fmtDelta(share.delta)}
-          deltaGood={deltaTone(share.delta)}
-        >
-          <Sparkline points={sov} good={share.delta >= 0} />
-        </KpiCard>
-        <KpiCard
-          label={`Citations · ${window.short}`}
-          value={fmtInt(citations.value)}
-          metricId="citations_count"
-          delta={fmtDelta(citations.delta, 0)}
-          deltaGood={deltaTone(citations.delta, 0)}
-        >
-          <Sparkline points={citationWindow} good={citations.delta >= 0} />
-        </KpiCard>
-        {/* Avg. answer position: the frame paints a falling position red, so the
-            card's polarity is preserved rather than silently re-coloured. */}
-        <KpiCard
-          label="Avg. answer position"
-          value={pos.value.toFixed(1)}
-          metricId="avg_answer_position"
-          delta={fmtDelta(pos.delta)}
-          deltaGood={deltaTone(pos.delta)}
-        >
-          <Sparkline points={position} good={pos.delta >= 0} />
-        </KpiCard>
-      </div>
-    </>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "14px" }}>
+      <KpiCard
+        label="Visibility score"
+        value={pct(m.visibilityScore)}
+        metricId="visibility_score"
+        delta={visDelta === null ? undefined : fmtDelta(visDelta)}
+        deltaGood={visDelta === null ? undefined : visDelta >= 0}
+        sub={trendSub}
+      >
+        {visPoints.length >= 2 && <Sparkline points={visPoints} good={(visDelta ?? 0) >= 0} />}
+      </KpiCard>
+
+      <KpiCard
+        label="Share of voice"
+        value={pct(m.shareOfVoice)}
+        metricId="share_of_voice"
+        delta={sovDelta === null ? undefined : fmtDelta(sovDelta)}
+        deltaGood={sovDelta === null ? undefined : sovDelta >= 0}
+        sub={trendSub}
+      >
+        {sovPoints.length >= 2 && <Sparkline points={sovPoints} good={(sovDelta ?? 0) >= 0} />}
+      </KpiCard>
+
+      {/* Citations are counted over the sampled corpus, not over a calendar
+          window, and there is no per-day citation series — so the label names
+          the sample and the card shows no delta. */}
+      <KpiCard
+        label="Citations · sampled answers"
+        value={int(m.citationsCount)}
+        metricId="citations_count"
+        sub={
+          m.hasData
+            ? `${int(m.uniqueCitedDomains)} domain${s(m.uniqueCitedDomains)} · ${pct(m.ownedCitationShare)} owned`
+            : "Collecting — first sample runs tonight"
+        }
+      />
+
+      <KpiCard
+        label="Avg. answer position"
+        value={m.avgAnswerPosition == null ? "—" : m.avgAnswerPosition.toFixed(1)}
+        metricId="avg_answer_position"
+        valueColor={m.avgAnswerPosition == null ? "var(--fnt)" : undefined}
+        sub={
+          m.avgAnswerPosition == null
+            ? m.hasData
+              ? "Not named in any sampled answer yet"
+              : "Collecting — first sample runs tonight"
+            : `Named first in ${int(m.answerRankFirst)} answer${s(m.answerRankFirst)}`
+        }
+      />
+    </div>
   );
 }

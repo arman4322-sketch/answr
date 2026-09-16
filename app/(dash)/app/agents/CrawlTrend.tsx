@@ -1,25 +1,30 @@
-"use client";
+import TrendChart, { type TrendSeries } from "@/components/app/charts/TrendChart";
+import { fmtInt, niceMax } from "./telemetryView";
 
-import TrendChart from "@/components/app/charts/TrendChart";
-import { useFilters } from "@/lib/filters/context";
-import { axisTicks, fmtInt, windowAxis, windowDayLabels } from "@/lib/filters/windows";
-import { crawlSeriesForRange } from "./crawlWindow";
+/* Daily activity chart for captured telemetry.
 
-/* "Crawl activity by agent" — chart plus both axes, live on the date range.
-   The plotted requests are the same daily numbers the KPI above sums, so the
-   card and the headline can never disagree. The y axis keeps the frame's
-   0–1,200 ticks while the window fits inside them and widens to a round axis
-   when a longer window runs past. */
+   The x axis is the days that actually have events — nothing is back-filled to
+   fill a 30-day frame — and the y axis is scaled to the real maximum instead of
+   the fixture's fixed 0–1,200 ticks. A single captured day is not a trend, so
+   the caller renders a note instead of a one-point line. */
 
-export default function CrawlTrend() {
-  const { range } = useFilters();
-  const series = crawlSeriesForRange(range);
-  const labels = windowDayLabels(range);
-  const axis = windowAxis(
-    series.flatMap((s) => s.points),
-    { domain: [0, 1200], labels: ["1,200", "800", "400", "0"] },
-    (v) => fmtInt(v)
-  );
+export default function CrawlTrend({
+  series,
+  labels,
+  height = 210,
+  width = 1080,
+}: {
+  series: TrendSeries[];
+  labels: string[];
+  height?: number;
+  width?: number;
+}) {
+  const all = series.flatMap((s) => s.points);
+  const top = niceMax(Math.max(0, ...all));
+  const ticks = [top, top * 0.75, top * 0.5, top * 0.25, 0].map((v) => fmtInt(v));
+  /* at most five x labels, always real dates from the captured days */
+  const xTicks =
+    labels.length <= 5 ? labels : [0, 1, 2, 3, 4].map((i) => labels[Math.round((i * (labels.length - 1)) / 4)]);
 
   return (
     <>
@@ -38,17 +43,17 @@ export default function CrawlTrend() {
             width: "32px",
           }}
         >
-          {axis.labels.map((l) => (
-            <span key={l}>{l}</span>
+          {ticks.map((l, i) => (
+            <span key={`${l}-${i}`}>{l}</span>
           ))}
         </div>
         <div style={{ position: "relative", flex: "1", minWidth: "0" }}>
           <TrendChart
             series={series}
             xLabels={labels}
-            width={1080}
-            height={210}
-            yDomain={axis.domain}
+            width={width}
+            height={height}
+            yDomain={[0, top]}
             yDecimals={0}
             showLegend={false}
             pad={{ top: 2, right: 2, bottom: 2, left: 2 }}
@@ -67,7 +72,7 @@ export default function CrawlTrend() {
           paddingLeft: "40px",
         }}
       >
-        {axisTicks(labels).map((l, i) => (
+        {xTicks.map((l, i) => (
           <span key={`${l}-${i}`}>{l}</span>
         ))}
       </div>

@@ -4,13 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-/* Honest sample-data banner. The dashboards run on an illustrative demo
-   workspace; the real per-brand numbers live in the Live Scan. This slim,
-   dismissible strip states that plainly and routes to the real surface.
-   Hidden on the screens that are already real (/app/scan, /app/live). */
+/* Honest sample-data banner — shown ONLY on the screens that have not yet been
+   converted to the live metrics engine (lib/live/metrics).
+
+   Overview, Citations, Prompts, Agents, Live Scan and Live Telemetry now read
+   real sampled data, so the banner must not appear there. This is an allow-list
+   (not a hide-list) so the banner disappears by itself as each remaining screen
+   is converted — it can never outlive the fixtures it describes. */
 
 const KEY = "answr:sampleBannerDismissed";
-const HIDE_ON = ["/app/scan", "/app/live"];
+/* Screens still backed by lib/data fixtures. Remove entries as they go live. */
+const SHOW_ON = [
+  "/app/insights",
+  "/app/conversations",
+  "/app/demand",
+  "/app/actions",
+];
 
 export default function SampleDataBanner() {
   const pathname = usePathname();
@@ -24,7 +33,7 @@ export default function SampleDataBanner() {
     }
   }, []);
 
-  if (dismissed || HIDE_ON.some((p) => pathname?.startsWith(p))) return null;
+  if (dismissed || !SHOW_ON.some((p) => pathname?.startsWith(p))) return null;
 
   return (
     <div
@@ -37,10 +46,10 @@ export default function SampleDataBanner() {
     >
       <span style={{ color: "var(--ac)", fontWeight: 700 }}>◆</span>
       <span style={{ color: "var(--mut)" }}>
-        Sample workspace — the figures here are illustrative demo data.
+        This screen is not on live data yet — the figures below are illustrative.
       </span>
-      <Link href="/app/scan" style={{ color: "var(--ac)", fontWeight: 600, textDecoration: "none" }}>
-        Run a Live Scan for real numbers on your brand →
+      <Link href="/app/overview" style={{ color: "var(--ac)", fontWeight: 600, textDecoration: "none" }}>
+        Overview, Citations, Prompts &amp; Agents are live →
       </Link>
       <button
         type="button"

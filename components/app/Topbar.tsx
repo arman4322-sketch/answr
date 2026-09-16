@@ -35,6 +35,7 @@ export const PLATFORM_ITEMS = PLATFORM_LABELS;
 
 export default function Topbar({
   crumb,
+  brand = "Nike",
   extra,
   showDateRange = true,
   showPlatforms = true,
@@ -51,6 +52,9 @@ export default function Topbar({
   rangeNote,
 }: {
   crumb: string | string[];
+  /** workspace name at the head of the crumb — screens on live data pass the
+      real configured brand; fixture screens keep the demo default */
+  brand?: string;
   extra?: React.ReactNode;
   showDateRange?: boolean;
   showPlatforms?: boolean;
@@ -82,7 +86,7 @@ export default function Topbar({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", borderBottom: "1px solid var(--brd)" }}>
       <div style={{ fontSize: "12.5px", color: "var(--fnt)" }}>
-        Nike{" "}
+        {brand}{" "}
         {parts.map((p, i) => (
           <span key={i}>
             <span style={{ color: "#3a3b40" }}>/</span>{" "}

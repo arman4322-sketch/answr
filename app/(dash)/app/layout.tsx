@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/app/Sidebar";
+import { getLiveMetrics } from "@/lib/live/metrics";
 import SampleDataBanner from "@/components/app/SampleDataBanner";
 import Overlays from "@/components/app/Overlays";
 import SmallScreenGate from "@/components/app/SmallScreenGate";
@@ -31,10 +32,16 @@ export default async function DashLayout({ children }: { children: React.ReactNo
     if (!user) redirect("/login");
   }
 
+  /* Real nav counts from the live layer — never fixture numbers. */
+  const live = await getLiveMetrics().catch(() => null);
+  const counts = live?.hasData
+    ? { citations: live.citationsCount, prompts: live.promptsTracked }
+    : undefined;
+
   return (
     <FilterProvider>
       <div style={{ display: "flex", background: "var(--bg0)", minHeight: "100vh" }}>
-        <Sidebar />
+        <Sidebar counts={counts} />
         <main id="main" className="dash-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <SampleDataBanner />
           {children}

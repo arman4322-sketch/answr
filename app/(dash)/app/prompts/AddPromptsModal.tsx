@@ -2,30 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
-import { PROMPT_QUOTA, SUGGESTED_PROMPTS } from "@/lib/data/prompts";
-import { PROMPT_ROWS } from "./Controls";
+import { normPrompt, type PromptsScreen } from "./rows";
 
-/* "+ Add prompts" → the real add flow (playbook 3: a designed modal exists, so
-   open it instead of toasting). Paste prompts one per line, or let "Suggest
-   prompts" draft category-appropriate ones for the workspace (running shoes /
-   training apparel). Quota is live against the plan's 1,000-prompt limit —
-   412 tracked today (the same 412 the topbar counts) — and the confirm button
-   counts what will actually be added: blank lines, duplicates inside the box
-   and prompts already tracked are all discounted, and the button disables if
-   the additions would break the plan limit. */
+/* "+ Add prompts" — the real add flow, now counted against the live workspace.
+
+   Gone with the fixtures: the "412 of 1,000 on the Scale plan" quota bar (the
+   plan limit was a fixture constant, and nothing in the live data reports one)
+   and the hand-written Nike suggestion list. The count shown is the workspace's
+   real tracked-prompt count; the suggestions are generated from the real brand
+   and category by the same generator onboarding uses (passed in from the
+   server). Duplicates — blank lines, repeats in the box, prompts already
+   tracked — are still discounted before the confirm button counts anything. */
 
 const SUGGEST_BATCH = 6;
 
-function norm(s: string) {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-const TRACKED = new Set(PROMPT_ROWS.map((r) => norm(r.prompt)));
-
-export default function AddPromptsModal() {
+export default function AddPromptsModal({ data }: { data: PromptsScreen }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const close = () => setOpen(false);
+
+  const tracked = useMemo(() => new Set(data.rows.map((r) => normPrompt(r.prompt))), [data.rows]);
 
   useEffect(() => {
     if (!open) return;
@@ -40,13 +36,13 @@ export default function AddPromptsModal() {
     const seen = new Set<string>();
     const fresh: string[] = [];
     let duplicates = 0;
-    let tracked = 0;
+    let already = 0;
     for (const raw of text.split("\n")) {
       const line = raw.trim();
       if (!line) continue;
-      const key = norm(line);
-      if (TRACKED.has(key)) {
-        tracked++;
+      const key = normPrompt(line);
+      if (tracked.has(key)) {
+        already++;
         continue;
       }
       if (seen.has(key)) {
@@ -56,54 +52,52 @@ export default function AddPromptsModal() {
       seen.add(key);
       fresh.push(line);
     }
-    return { fresh, duplicates, tracked };
-  }, [text]);
+    return { fresh, duplicates, already };
+  }, [text, tracked]);
 
   const adding = parsed.fresh.length;
-  const after = PROMPT_QUOTA.used + adding;
-  const overBy = Math.max(0, after - PROMPT_QUOTA.limit);
-  const canAdd = adding > 0 && overBy === 0;
-  const usedPct = (PROMPT_QUOTA.used / PROMPT_QUOTA.limit) * 100;
-  const addPct = Math.min(100 - usedPct, (adding / PROMPT_QUOTA.limit) * 100);
+  const after = data.rows.length + adding;
+  const canAdd = adding > 0;
 
   function suggest() {
-    const present = new Set([...parsed.fresh.map(norm), ...TRACKED]);
-    const picks = SUGGESTED_PROMPTS.filter((p) => !present.has(norm(p))).slice(0, SUGGEST_BATCH);
+    const present = new Set([...parsed.fresh.map(normPrompt), ...tracked]);
+    const picks = data.suggestions.filter((p) => !present.has(normPrompt(p))).slice(0, SUGGEST_BATCH);
+    if (data.suggestions.length === 0) {
+      toast("Suggestions need a configured brand — set one up in Settings › Brand.");
+      return;
+    }
     if (picks.length === 0) {
-      toast("Every suggestion for this category is already in the list.");
+      toast("Every generated suggestion for this workspace is already in the list.");
       return;
     }
     setText((t) => (t.trim() ? `${t.replace(/\s+$/, "")}\n${picks.join("\n")}` : picks.join("\n")));
-    toast(`Drafted ${picks.length} prompts for running shoes & training apparel — edit before adding.`);
+    toast(`Drafted ${picks.length} prompts for ${data.brand}${data.category ? ` · ${data.category}` : ""} — edit before adding.`);
   }
 
   async function confirm() {
-    if (overBy > 0) {
-      toast(`That's ${overBy} over the plan's ${PROMPT_QUOTA.limit.toLocaleString()}-prompt limit — remove a few or archive tracked prompts.`);
-      return;
-    }
     if (adding === 0) {
       toast("Nothing to add — paste prompts one per line, or use Suggest prompts.");
       return;
     }
-    // Persist to the data layer (durable once storage is configured). These
-    // prompts feed the sampler (lib/sampler/run reads tracked prompts).
     try {
       const res = await fetch("/api/prompts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prompts: parsed.fresh }),
       });
-      const data = (await res.json()) as { ok: boolean; added?: number; total?: number; durable?: boolean; error?: string };
-      if (data.ok) {
+      const body = (await res.json()) as { ok: boolean; added?: number; total?: number; durable?: boolean; error?: string };
+      if (body.ok) {
         toast(
-          `${data.added} prompt${data.added === 1 ? "" : "s"} saved — ${data.total} now tracked and queued for the next sample.` +
-            (data.durable ? "" : " (Stored in memory until you add a KV key.)"),
+          `${body.added} prompt${body.added === 1 ? "" : "s"} saved — ${body.total} in the prompt store.` +
+            (data.workspacePrompts > 0
+              ? " Add them to the workspace prompt set in Settings › Brand to include them in the next run."
+              : " They run on the next scheduled sample.") +
+            (body.durable ? "" : " Stored in memory until you add a KV key."),
         );
         setText("");
         close();
       } else {
-        toast(data.error ?? "Could not save prompts.");
+        toast(body.error ?? "Could not save prompts.");
       }
     } catch {
       toast("Could not reach the server to save prompts.");
@@ -133,21 +127,25 @@ export default function AddPromptsModal() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px"}}>
               <div>
                 <div style={{fontSize:"15px",fontWeight:"600"}}>{"Add prompts"}</div>
-                <div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"4px"}}>{"Nike · running shoes & training apparel · every prompt runs daily on all enabled platforms"}</div>
+                <div style={{fontSize:"12px",color:"var(--fnt)",marginTop:"4px",lineHeight:1.5}}>
+                  {data.configured
+                    ? `${data.brand}${data.category ? ` · ${data.category}` : ""} · every prompt runs on the next scheduled sample`
+                    : "No workspace configured yet — set up your brand in Settings › Brand so sampled prompts can be scored."}
+                </div>
               </div>
               <button type="button" aria-label="Close" onClick={close} style={{color:"var(--fnt)",background:"none",border:"none",padding:0,cursor:"pointer",fontSize:"14px",fontFamily:"inherit",lineHeight:1}}>{"✕"}</button>
             </div>
 
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"16px"}}>
               <label htmlFor="new-prompts" style={{fontSize:"10px",fontWeight:500,letterSpacing:".08em",textTransform:"uppercase",color:"var(--fnt)"}}>{"One prompt per line"}</label>
-              <button type="button" onClick={suggest} style={{fontSize:"11.5px",fontWeight:500,color:"var(--ac)",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit"}}>{"Suggest prompts"}</button>
+              <button type="button" onClick={suggest} aria-disabled={data.suggestions.length === 0} style={{fontSize:"11.5px",fontWeight:500,color:"var(--ac)",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",opacity:data.suggestions.length === 0 ? 0.5 : 1}}>{"Suggest prompts"}</button>
             </div>
             <textarea
               id="new-prompts"
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={8}
-              placeholder={"best running shoes for beginners\nhow to choose training tights\nNike vs New Balance for wide feet"}
+              placeholder={"What are the best options in this category?\nWhich one would you recommend, and why?\nWhat are the top alternatives?"}
               style={{width:"100%",marginTop:"6px",background:"var(--bg0)",border:"1px solid var(--brd)",borderRadius:"8px",padding:"10px 12px",fontSize:"12.5px",lineHeight:"1.7",color:"var(--tx)",fontFamily:"inherit",resize:"vertical"}}
             />
 
@@ -155,21 +153,15 @@ export default function AddPromptsModal() {
               <div style={{display:"flex",justifyContent:"space-between",fontSize:"12px",fontVariantNumeric:"tabular-nums"}}>
                 <span style={{color:"var(--fnt)"}}>{"Tracked prompts"}</span>
                 <span style={{fontWeight:500}}>
-                  {`${PROMPT_QUOTA.used.toLocaleString()} of ${PROMPT_QUOTA.limit.toLocaleString()}`}
-                  {adding > 0 && <span style={{color:overBy > 0 ? "#e5636e" : "var(--ac)"}}>{` → ${after.toLocaleString()}`}</span>}
+                  {data.rows.length.toLocaleString()}
+                  {adding > 0 && <span style={{color:"var(--ac)"}}>{` → ${after.toLocaleString()}`}</span>}
                 </span>
               </div>
-              <div style={{height:"6px",borderRadius:"3px",background:"var(--bg2)",marginTop:"8px",display:"flex",overflow:"hidden"}}>
-                <div style={{width:`${usedPct}%`,background:"color-mix(in oklab,var(--ac) 45%,transparent)"}} />
-                <div style={{width:`${addPct}%`,background:overBy > 0 ? "#e5636e" : "var(--ac)"}} />
-              </div>
               <div style={{marginTop:"8px",fontSize:"11px",lineHeight:"1.55",color:"var(--fnt)",fontVariantNumeric:"tabular-nums"}}>
-                {overBy > 0
-                  ? `${overBy} over the plan limit — remove ${overBy} line${overBy === 1 ? "" : "s"} or archive tracked prompts first.`
-                  : adding > 0
-                    ? `${adding} new prompt${adding === 1 ? "" : "s"} · ${(PROMPT_QUOTA.limit - after).toLocaleString()} of the plan's quota left after adding.`
-                    : `${(PROMPT_QUOTA.limit - PROMPT_QUOTA.used).toLocaleString()} prompts left on the Scale plan.`}
-                {parsed.tracked > 0 && ` ${parsed.tracked} already tracked — skipped.`}
+                {adding > 0
+                  ? `${adding} new prompt${adding === 1 ? "" : "s"} to add.`
+                  : "Paste the questions you want asked — one per line."}
+                {parsed.already > 0 && ` ${parsed.already} already tracked — skipped.`}
                 {parsed.duplicates > 0 && ` ${parsed.duplicates} repeated line${parsed.duplicates === 1 ? "" : "s"} — skipped.`}
               </div>
             </div>

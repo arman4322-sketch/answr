@@ -203,9 +203,12 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
       };
     });
 
-  // ---- brand share of voice (mentions across latest answers) ----
-  const mentionCount = (name: string) =>
-    promptRows.filter((p) => (name === brand ? p.mentioned : p.competitorsMentioned.includes(name))).length;
+  // ---- brand share of voice ----
+  // Counted per ANSWER across every sampled run — the same basis lib/scoring
+  // uses for shareOfVoice, so the headline KPI and this table always agree.
+  // (Counting once per prompt instead would make them disagree by construction.)
+  const allAnswers = runs.flatMap((r) => r.answers).filter((a) => !a.error && a.text);
+  const mentionCount = (name: string) => allAnswers.filter((a) => wordIn(a.text, name)).length;
   const rawBrands = [brand, ...competitors].map((name) => ({
     name,
     isBrand: name === brand,
