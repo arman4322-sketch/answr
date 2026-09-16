@@ -1,6 +1,7 @@
 import { answerStore, type PromptRun } from "@/lib/sampler/store";
-import { getWorkspace } from "@/lib/workspace";
+import { getWorkspace, identityOf } from "@/lib/workspace";
 import { listSentiment, listPromptTopics, type Sentiment } from "./classify";
+import { brandMatcher } from "./entity";
 
 /* Enriched live metrics — sentiment and topic breakdowns computed from the
    classification pass (lib/live/classify) over answers Answr already sampled.
@@ -84,12 +85,6 @@ export const providerLabel = (id: string) => PROVIDER_LABELS[id] ?? id;
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const dayKey = (ts: number) => new Date(ts).toISOString().slice(0, 10);
 
-function wordIn(text: string, name: string): boolean {
-  if (!name) return false;
-  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\b${esc}\\b`, "i").test(text);
-}
-
 const emptySplit: SentimentSplit = {
   positive: 0, neutral: 0, negative: 0, total: 0,
   positivePct: 0, neutralPct: 0, negativePct: 0,
@@ -116,6 +111,10 @@ export async function getEnrichedMetrics(): Promise<EnrichedMetrics> {
     lastClassifiedAt: null,
   };
   if (!workspace) return empty;
+
+  // Topic visibility asks the same "did this answer name the brand" question as
+  // every other metric, so it uses the same entity matcher.
+  const isBrand = await brandMatcher(identityOf(workspace));
 
   // ---------- sentiment ----------
   const hasSentiment = sentiment.length > 0;
@@ -204,7 +203,7 @@ export async function getEnrichedMetrics(): Promise<EnrichedMetrics> {
       for (const ans of run.answers) {
         if (ans.error || !ans.text) continue;
         g.answers += 1;
-        const named = wordIn(ans.text, workspace.brand);
+        const named = isBrand(run.id, ans);
         if (named) g.appearances += 1;
         const p = g.perProvider.get(ans.provider) ?? { a: 0, n: 0 };
         p.n += 1;

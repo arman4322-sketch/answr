@@ -1,40 +1,25 @@
 import { NextResponse } from "next/server";
 import { rateLimit, callerKey } from "@/lib/ratelimit";
-import { pickProvider } from "@/lib/providers/registry";
+import { resolveIdentity, hostOf, nameFromHost, identitySummary } from "@/lib/brand/identity";
 
-/* AI brand detection — given a website URL, identify the brand name, category,
-   and a few aliases/owned domains. Powers onboarding step 1. Public (onboarding helper), rate-limited. */
+/* AI brand detection — given a website URL, work out who owns it.
+ *
+ * Powers onboarding step 1. The website is the only unambiguous thing the
+ * operator gives us, so this reads it and builds the entity profile every
+ * downstream metric matches against: the canonical name, what the company
+ * actually does, and anything else that shares its name.
+ *
+ * Public (onboarding helper), rate-limited. */
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const cap = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(0, n) : "");
-
-function hostOf(url: string): string {
-  return url.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "").toLowerCase();
-}
-function nameFromHost(host: string): string {
-  const base = host.split(".")[0] || host;
-  return base.charAt(0).toUpperCase() + base.slice(1);
-}
-function parseJson(text: string): Record<string, unknown> | null {
-  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-  const m = cleaned.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try {
-    return JSON.parse(m[0]) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: Request) {
   if (!rateLimit(`suggest:${callerKey(req)}`)) {
     return NextResponse.json({ ok: false, error: "Too many requests — try again in a minute." }, { status: 429 });
-  }
-  const provider = pickProvider();
-  if (!provider) {
-    return NextResponse.json({ ok: false, error: "No LLM key configured. Add a provider key (GEMINI_API_KEY or OPENAI_API_KEY)." }, { status: 400 });
   }
 
   let body: Record<string, unknown>;
@@ -43,38 +28,34 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Malformed request." }, { status: 400 });
   }
-  const url = cap(body.url, 160);
+
+  const url = cap(body.url, 200);
   if (!url) return NextResponse.json({ ok: false, error: "Enter a website." }, { status: 400 });
   const host = hostOf(url);
-
-  const prompt =
-    `Identify the company or brand at the website "${host}". ` +
-    `Return ONLY strict minified JSON (no markdown, no code fences) of the form ` +
-    `{"name":"<brand name>","category":"<short descriptor e.g. 'fast food restaurants'>","aliases":["<sub-brand, product line, or owned domain>","..."]}. ` +
-    `Give 2 to 4 aliases. If the brand is unknown, infer a sensible name from the domain.`;
-
-  let text = "";
-  try {
-    const r = await provider.sample(prompt, { grounding: false, timeoutMs: 25000 });
-    text = r.text;
-  } catch (e) {
-    // Graceful fallback: still return a domain-derived name so onboarding proceeds.
-    return NextResponse.json({
-      ok: true,
-      fallback: true,
-      name: nameFromHost(host),
-      category: "",
-      aliases: [host],
-      note: `Detection unavailable (${(e as Error).message}); used the domain.`,
-    });
+  if (!host || !host.includes(".")) {
+    return NextResponse.json({ ok: false, error: "That doesn't look like a website address." }, { status: 400 });
   }
 
-  const parsed = parseJson(text);
-  const name = cap(parsed?.name, 80) || nameFromHost(host);
-  const category = cap(parsed?.category, 80);
-  const aliases = Array.isArray(parsed?.aliases)
-    ? (parsed!.aliases as unknown[]).map((a) => cap(a, 60)).filter(Boolean).slice(0, 4)
-    : [host];
+  const identity = await resolveIdentity({
+    url,
+    name: cap(body.name, 80) || undefined,
+    category: cap(body.category, 120) || undefined,
+  });
 
-  return NextResponse.json({ ok: true, name, category, aliases, host });
+  return NextResponse.json({
+    ok: true,
+    host,
+    // Onboarding's existing fields, unchanged.
+    name: identity.name || nameFromHost(host),
+    category: identity.category,
+    aliases: identity.aliases,
+    // The entity profile, so onboarding can warn about a contested name and
+    // the workspace can be saved with matching already configured.
+    identity,
+    ambiguous: identity.ambiguous,
+    conflicts: identity.conflicts,
+    summary: identitySummary(identity),
+    fallback: identity.source === "domain",
+    note: identity.note,
+  });
 }

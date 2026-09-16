@@ -1,7 +1,8 @@
 import { db, newId } from "@/lib/db";
 import { answerStore, type PromptRun } from "@/lib/sampler/store";
-import { getWorkspace } from "@/lib/workspace";
+import { getWorkspace, identityOf } from "@/lib/workspace";
 import { pickProvider } from "@/lib/providers/registry";
+import { brandMatcher } from "./entity";
 
 /* Classification pass — turns answers Answr has ALREADY sampled into two more
    live metrics, using only the provider keys already connected:
@@ -111,16 +112,16 @@ export async function runClassification(opts: { limit?: number } = {}): Promise<
   let skipped = 0;
   let errors = 0;
 
-  // ---- sentiment: only answers that actually mention the brand ----
-  const mentions = (text: string) => {
-    const esc = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`\\b${esc}\\b`, "i").test(text);
-  };
+  // ---- sentiment: only answers that describe THIS entity ----
+  // Matching the name alone would score answers about an unrelated company of
+  // the same name, and the themes would come back describing that company's
+  // product instead of this one.
+  const isBrand = await brandMatcher(identityOf(workspace));
 
   const pending: { id: string; run: PromptRun; provider: string; text: string }[] = [];
   for (const run of runs) {
     for (const a of run.answers) {
-      if (a.error || !a.text || !mentions(a.text)) continue;
+      if (a.error || !a.text || !isBrand(run.id, a)) continue;
       const id = answerKey(run.id, a.provider);
       if (done.has(id)) {
         skipped += 1;

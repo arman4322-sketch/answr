@@ -1,7 +1,9 @@
 import { answerStore, type PromptRun } from "@/lib/sampler/store";
 import { scoreRuns } from "@/lib/scoring";
-import { getWorkspace, type Workspace } from "@/lib/workspace";
+import { getWorkspace, identityOf, type Workspace } from "@/lib/workspace";
 import { summarize } from "@/lib/telemetry";
+import { brandMatcher } from "@/lib/live/entity";
+import type { BrandIdentity } from "@/lib/brand/identity";
 
 /* The live metrics layer — the single source every dashboard reads.
 
@@ -91,6 +93,11 @@ export interface LiveMetrics {
   prompts: PromptRow[];
   series: DayPoint[];
 
+  /** the entity these numbers are about — resolved from brand name + website */
+  identity: BrandIdentity | null;
+  /** answers where the brand NAME appeared but described a different entity */
+  nameCollisions: number;
+
   /** first-party telemetry — real traffic only, 0 until bots/visitors arrive */
   crawlerEvents: number;
   uniqueAgents: number;
@@ -158,6 +165,8 @@ function emptyMetrics(workspace: Workspace | null, telemetry: Awaited<ReturnType
     citedDomains: [],
     prompts: [],
     series: [],
+    identity: workspace ? identityOf(workspace) : null,
+    nameCollisions: 0,
     crawlerEvents: telemetry.crawlerEvents,
     uniqueAgents: telemetry.uniqueAgents,
     pagesCrawled: telemetry.pagesCrawled,
@@ -178,7 +187,14 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
 
   const brand = workspace.brand;
   const competitors = workspace.competitors;
-  const scores = scoreRuns(runs, { brand, brandDomain: workspace.domain, competitors });
+  const identity = identityOf(workspace);
+
+  // Every "does this answer mention the brand" question in this file goes
+  // through one matcher, so the headline KPIs, the tables and the per-prompt
+  // rows can never disagree about what counts.
+  const isBrand = await brandMatcher(identity);
+
+  const scores = scoreRuns(runs, { brand, brandDomain: workspace.domain, competitors, brandMatch: isBrand });
 
   // ---- per-prompt (latest run per prompt text) ----
   const latest = new Map<string, PromptRun>();
@@ -190,15 +206,19 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
     .sort((a, b) => b.ts - a.ts)
     .map((run) => {
       const ok = run.answers.filter((a) => !a.error && a.text);
+      const onBrand = ok.filter((a) => isBrand(run.id, a));
       const combined = ok.map((a) => a.text).join("  ");
-      const ranks = ok.map((a) => rankOf(a.text, brand, competitors)).filter((x): x is number => x != null);
+      const ranks = onBrand
+        .map((a) => rankOf(a.text, brand, competitors))
+        .filter((x): x is number => x != null);
       return {
         prompt: run.prompt,
-        mentioned: wordIn(combined, brand),
+        mentioned: onBrand.length > 0,
         rank: ranks.length ? Math.round((ranks.reduce((s, n) => s + n, 0) / ranks.length) * 10) / 10 : null,
         competitorsMentioned: competitors.filter((c) => wordIn(combined, c)),
         providersAnswered: ok.length,
-        excerpt: (ok[0]?.text ?? "").slice(0, 260).replace(/\s+/g, " ").trim(),
+        // Quote an answer that is actually about this brand where one exists.
+        excerpt: ((onBrand[0] ?? ok[0])?.text ?? "").slice(0, 260).replace(/\s+/g, " ").trim(),
         ts: run.ts,
       };
     });
@@ -207,13 +227,16 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
   // Counted per ANSWER across every sampled run — the same basis lib/scoring
   // uses for shareOfVoice, so the headline KPI and this table always agree.
   // (Counting once per prompt instead would make them disagree by construction.)
-  const allAnswers = runs.flatMap((r) => r.answers).filter((a) => !a.error && a.text);
-  const mentionCount = (name: string) => allAnswers.filter((a) => wordIn(a.text, name)).length;
-  const rawBrands = [brand, ...competitors].map((name) => ({
-    name,
-    isBrand: name === brand,
-    mentions: mentionCount(name),
-  }));
+  const allAnswers = runs.flatMap((r) => r.answers.map((a) => ({ runId: r.id, a })))
+    .filter(({ a }) => !a.error && a.text);
+  const rawBrands = [
+    { name: brand, isBrand: true, mentions: allAnswers.filter(({ runId, a }) => isBrand(runId, a)).length },
+    ...competitors.map((name) => ({
+      name,
+      isBrand: false,
+      mentions: allAnswers.filter(({ a }) => wordIn(a.text, name)).length,
+    })),
+  ];
   const totalMentions = rawBrands.reduce((s, b) => s + b.mentions, 0) || 1;
   const brands: BrandShare[] = rawBrands
     .map((b) => ({ ...b, share: r1((b.mentions / totalMentions) * 100) }))
@@ -226,7 +249,7 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
       if (a.error || !a.text) continue;
       const e = byProvider.get(a.provider) ?? { answers: 0, appearances: 0 };
       e.answers += 1;
-      if (wordIn(a.text, brand)) e.appearances += 1;
+      if (isBrand(run.id, a)) e.appearances += 1;
       byProvider.set(a.provider, e);
     }
   }
@@ -272,7 +295,7 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
   const series: DayPoint[] = [...byDay.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, dayRuns]) => {
-      const s = scoreRuns(dayRuns, { brand, brandDomain: workspace.domain, competitors });
+      const s = scoreRuns(dayRuns, { brand, brandDomain: workspace.domain, competitors, brandMatch: isBrand });
       return { date, visibility: s.visibilityScore, shareOfVoice: s.shareOfVoice, runs: dayRuns.length };
     });
 
@@ -297,6 +320,8 @@ export async function getLiveMetrics(limit = 1000): Promise<LiveMetrics> {
     citedDomains,
     prompts: promptRows,
     series,
+    identity,
+    nameCollisions: scores.nameCollisions,
     crawlerEvents: telemetry.crawlerEvents,
     uniqueAgents: telemetry.uniqueAgents,
     pagesCrawled: telemetry.pagesCrawled,

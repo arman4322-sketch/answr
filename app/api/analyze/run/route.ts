@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { GATE_COOKIE, isUnlocked } from "@/lib/gate";
 import { runClassification } from "@/lib/live/classify";
+import { runEntityVerification } from "@/lib/live/entity";
 import { getEnrichedMetrics } from "@/lib/live/enriched";
 
-/* Classification trigger — runs the sentiment + topic pass over answers the
-   sampler has already stored. Cheap and idempotent: it only classifies what is
-   new, so re-running costs almost nothing.
+/* Analysis trigger — the enrichment pass over answers the sampler has already
+   stored. Two stages, in order:
+
+     1. Entity verification: for a brand whose name is shared with something
+        else, decide which one each contested answer is about. Everything
+        downstream depends on this, so it runs first.
+     2. Classification: sentiment and topics, over the answers that survived.
+
+   Cheap and idempotent: both stages only process what is new, so re-running
+   costs almost nothing.
 
    Auth: the dashboard cookie (a signed-in operator) OR the cron/ingest secret,
    so the nightly schedule can enrich each fresh sample automatically. */
@@ -34,8 +42,10 @@ async function handle(req: Request) {
   if (!(await authorized(req))) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 401 });
   }
+  // Order matters: classification reads the entity verdicts this pass writes.
+  const entity = await runEntityVerification();
   const report = await runClassification();
-  return NextResponse.json({ ...report });
+  return NextResponse.json({ ...report, entity });
 }
 
 export async function POST(req: Request) {
